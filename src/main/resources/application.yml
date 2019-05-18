@@ -1,0 +1,22 @@
+server:
+  port: 8080
+
+distribution:
+  hostName: 172.16.33.119
+  port: 1800
+  queueManager: DFWTINTRA
+  channel: JAVA.CHANNEL
+  ccsid: 1208
+  queueName: DXP_TO_GGFW
+  minConcurrency: 1
+  maxConcurrency: 2
+  # 优先级第一 map key:dxpid, value: 队列名称 如: {DXPENT0000011951: DXP_11951_ENT}
+  dxpidDistribution: {}
+  # 优先级第二 map key:msgtype, value: 队列名称 如: {CEB312Message: DXP_11951_ENT}
+  msgtypeDistribution: {}
+  # 优先级第三 map key: 队列名称, value: 比重 如: {GGFW_TO_ENT: 1, GGFW_TO_ENT_INVT: 1}
+  percentageDistribution: {}
+  # 前面三个没有，才执行最后一个 列表格式，随机分发
+  randomDistribution:
+  # 所有没有区配到，就转发到默认队列
+  defaultQueue: GGFW_TO_ENT
