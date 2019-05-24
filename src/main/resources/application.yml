@@ -1,6 +1,7 @@
 server:
   port: 8080
 
+
 distribution:
   hostName: 172.16.33.119
   port: 1800
@@ -20,3 +21,6 @@ distribution:
   randomDistribution:
   # 所有没有区配到，就转发到默认队列
   defaultQueue: GGFW_TO_ENT
+
+logging:
+  config: classpath:logback-spring.xml

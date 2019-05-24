@@ -4,6 +4,7 @@ import com.github.distributionmessage.config.DistributionProp;
 import com.github.distributionmessage.constant.CommonConstant;
 import com.github.distributionmessage.utils.CommonUtils;
 import com.github.distributionmessage.utils.DistributionUtils;
+import com.ibm.mq.jms.MQQueue;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,11 +43,14 @@ public class DistributionMessageListener implements MessageListener {
                     logger.error("message is not dxp message! message=[" + sm + "]");
                     return;
                 }
-                jmsTemplate.send(queueName, session -> {
-                    BytesMessage bm = session.createBytesMessage();
-                    bm.writeBytes(bytes);
-                    return bm;
-                });
+                MQQueue queue = new MQQueue(queueName);
+                queue.setCCSID(this.distributionProp.getCcsid());
+                jmsTemplate.convertAndSend(queue, bytes);
+//                jmsTemplate.send(queue, session -> {
+//                    BytesMessage bm = session.createBytesMessage();
+//                    bm.writeBytes(bytes);
+//                    return bm;
+//                });
             } else {
                 logger.error("message not is bytes message! message=[" + message + "]");
             }
