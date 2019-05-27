@@ -128,18 +128,29 @@
     <!--</contextListener>-->
 
     <!--<springProfile name="production">-->
-    <logger name="org.springframework.jdbc.core" additivity="false" level="DEBUG" >
-        <appender-ref ref="FILEERROR"/>
-        <appender-ref ref="FILEINFO"/>
-        <appender-ref ref="STDOUT" />
+    <!--<logger name="org.springframework.jdbc.core" additivity="false" level="DEBUG" >-->
+        <!--<appender-ref ref="FILEERROR"/>-->
+        <!--<appender-ref ref="FILEINFO"/>-->
+        <!--<appender-ref ref="STDOUT" />-->
+    <!--</logger>-->
+    <logger name="org.springframework" level="INFO">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+    <logger name="com.github.distributionmessage.DistributionMessageApplication" level="INFO">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+    <logger name="org.xnio" level="INFO">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+    <logger name="io.undertow" level="INFO">
+        <appender-ref ref="STDOUT"/>
     </logger>
     <root level="INFO">
         <appender-ref ref="FILEERROR"/>
         <!--<appender-ref ref="FILEWARN"/>-->
         <appender-ref ref="FILEINFO"/>
         <!--<appender-ref ref="DBAPPENDER"/>-->
-        <appender-ref ref="STDOUT"/>
-
+        <!--<appender-ref ref="STDOUT"/>-->
     </root>
     <!--</springProfile>-->
 

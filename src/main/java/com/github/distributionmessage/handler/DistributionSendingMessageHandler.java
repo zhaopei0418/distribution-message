@@ -32,6 +32,7 @@ public class DistributionSendingMessageHandler extends JmsSendingMessageHandler 
 
     @Override
     protected void handleMessageInternal(Message<?> message) {
+        long startTime = System.currentTimeMillis();
         MessagePostProcessor messagePostProcessor = new HeaderMappingMessagePostProcessor(message, this.headerMapper);
         Assert.notNull(this.distributionProp, "distributionProp must not be null");
         Assert.notNull(message, "Message must not be null");
@@ -46,10 +47,10 @@ public class DistributionSendingMessageHandler extends JmsSendingMessageHandler 
                 String dxpid = DistributionUtils.getDxpIdByMessage(sm);
                 String msgtype = DistributionUtils.getMessageType(sm);
                 String queueName = DistributionUtils.getDestinationQueueName(this.distributionProp, dxpid, msgtype);
-                logger.info("dxpId=[" + dxpid + "] messageType=["
-                        + msgtype + "] distributionQueue=[" + queueName + "]");
                 queue.setBaseQueueName(queueName);
                 this.jmsTemplate.convertAndSend(queue, playload, messagePostProcessor);
+                logger.info("dxpId=[" + dxpid + "] messageType=["
+                        + msgtype + "] distributionQueue=[" + queueName + "] use[" + (System.currentTimeMillis() - startTime) + "ms]");
             } catch (Exception e) {
                 CommonUtils.logError(logger, e);
             }
