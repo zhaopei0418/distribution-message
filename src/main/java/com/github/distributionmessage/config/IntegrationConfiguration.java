@@ -3,6 +3,7 @@ package com.github.distributionmessage.config;
 import com.github.distributionmessage.constant.ChannelConstant;
 import com.github.distributionmessage.handler.DistributionSendingMessageHandler;
 import com.github.distributionmessage.listener.DistributionMessageListener;
+import com.github.distributionmessage.thread.SendMessageThread;
 import com.ibm.mq.jms.MQQueue;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -22,11 +23,13 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
 import org.springframework.util.StringUtils;
 
+import javax.annotation.PostConstruct;
 import javax.jms.ConnectionFactory;
 import javax.jms.JMSException;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.concurrent.Executors;
 
 @Configuration
 public class IntegrationConfiguration {
@@ -36,6 +39,11 @@ public class IntegrationConfiguration {
 
     @Autowired
     private DistributionProp distributionProp;
+
+    @PostConstruct
+    public void initialization() {
+        SendMessageThread.setExecutorService(Executors.newFixedThreadPool(this.distributionProp.getMinConcurrency()));
+    }
 
     @Bean(name = ChannelConstant.IBMMQ_RECEIVE_CHANNEL)
     public MessageChannel ibmmqReceiveChannel() {

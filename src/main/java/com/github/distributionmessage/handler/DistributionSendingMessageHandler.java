@@ -2,6 +2,7 @@ package com.github.distributionmessage.handler;
 
 import com.github.distributionmessage.config.DistributionProp;
 import com.github.distributionmessage.constant.CommonConstant;
+import com.github.distributionmessage.thread.SendMessageThread;
 import com.github.distributionmessage.utils.CommonUtils;
 import com.github.distributionmessage.utils.DistributionUtils;
 import com.ibm.mq.jms.MQQueue;
@@ -48,9 +49,10 @@ public class DistributionSendingMessageHandler extends JmsSendingMessageHandler 
                 String msgtype = DistributionUtils.getMessageType(sm);
                 String queueName = DistributionUtils.getDestinationQueueName(this.distributionProp, dxpid, msgtype);
                 queue.setBaseQueueName(queueName);
-                this.jmsTemplate.convertAndSend(queue, playload, messagePostProcessor);
+//                this.jmsTemplate.convertAndSend(queue, playload, messagePostProcessor);
+                SendMessageThread.getExecutorService().execute(new SendMessageThread(jmsTemplate, playload, queue, messagePostProcessor));
                 logger.info("dxpId=[" + dxpid + "] messageType=["
-                        + msgtype + "] distributionQueue=[" + queueName + "] use[" + (System.currentTimeMillis() - startTime) + "ms]");
+                        + msgtype + "] distributionQueue=[" + queueName + "] use[" + (System.currentTimeMillis() - startTime) + "]ms");
             } catch (Exception e) {
                 CommonUtils.logError(logger, e);
             }
