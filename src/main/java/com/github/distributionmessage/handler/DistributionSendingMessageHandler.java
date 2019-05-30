@@ -22,37 +22,58 @@ public class DistributionSendingMessageHandler extends JmsSendingMessageHandler 
 
     private final JmsTemplate jmsTemplate;
 
+    private final JmsTemplate secondJmsTemplate;
+
+    private final JmsTemplate thirdJmsTemplate;
+
     private JmsHeaderMapper headerMapper = new DefaultJmsHeaderMapper();
 
     private DistributionProp distributionProp;
 
-    public DistributionSendingMessageHandler(JmsTemplate jmsTemplate) {
+    public DistributionSendingMessageHandler(JmsTemplate jmsTemplate, JmsTemplate secondJmsTemplate, JmsTemplate thirdJmsTemplate) {
         super(jmsTemplate);
         this.jmsTemplate = jmsTemplate;
+        this.secondJmsTemplate = secondJmsTemplate;
+        this.thirdJmsTemplate = thirdJmsTemplate;
     }
 
     @Override
     protected void handleMessageInternal(Message<?> message) {
-        long startTime = System.currentTimeMillis();
+        long startTime = System.nanoTime();
         MessagePostProcessor messagePostProcessor = new HeaderMappingMessagePostProcessor(message, this.headerMapper);
         Assert.notNull(this.distributionProp, "distributionProp must not be null");
         Assert.notNull(message, "Message must not be null");
         Object playload = message.getPayload();
         Assert.notNull(playload, "Message playload must not be null");
+        JmsTemplate useJmsTemplate = null;
+        int useCcsid;
         if (playload instanceof byte[]) {
             try {
                 byte[] bytes = (byte[]) playload;
                 MQQueue queue = new MQQueue();
-                queue.setCCSID(this.distributionProp.getCcsid());
                 String sm = new String(bytes, CommonConstant.CHARSET);
                 String dxpid = DistributionUtils.getDxpIdByMessage(sm);
                 String msgtype = DistributionUtils.getMessageType(sm);
                 String queueName = DistributionUtils.getDestinationQueueName(this.distributionProp, dxpid, msgtype);
+                if (queueName.lastIndexOf("::") != -1) {
+                    queueName = queueName.replaceAll("::", "");
+                    useJmsTemplate = this.thirdJmsTemplate;
+                    useCcsid = this.distributionProp.getThirdCcsid();
+                } else if (queueName.lastIndexOf(":") != -1){
+                    queueName = queueName.replaceAll(":", "");
+                    useJmsTemplate = this.secondJmsTemplate;
+                    useCcsid = this.distributionProp.getSecondCcsid();
+                } else {
+                    useJmsTemplate = this.jmsTemplate;
+                    useCcsid = this.distributionProp.getCcsid();
+                }
+                queue.setCCSID(useCcsid);
                 queue.setBaseQueueName(queueName);
 //                this.jmsTemplate.convertAndSend(queue, playload, messagePostProcessor);
-                SendMessageThread.getExecutorService().execute(new SendMessageThread(jmsTemplate, playload, queue, messagePostProcessor));
+                SendMessageThread.getExecutorService().execute(new SendMessageThread(useJmsTemplate, playload, queue, messagePostProcessor));
                 logger.info("dxpId=[" + dxpid + "] messageType=["
-                        + msgtype + "] distributionQueue=[" + queueName + "] use[" + (System.currentTimeMillis() - startTime) + "]ms");
+                        + msgtype + "] ccsid=[" + useCcsid + "] distributionQueue=[" + queueName + "] use["
+                        + ((double)(System.nanoTime() - startTime) / 1000000.0) + "]ms");
             } catch (Exception e) {
                 CommonUtils.logError(logger, e);
             }

@@ -17,45 +17,91 @@ public class DistributionUtils {
     public static String getDestinationQueueName(DistributionProp distributionProp, String dxpid, String msgtype) {
         String result = null;
 
-        if (null != distributionProp.getDxpidDistribution() && !distributionProp.getDxpidDistribution().isEmpty()) {
-            logger.debug("dxpid distribution");
-            result = distributionProp.getDxpidDistribution().get(dxpid);
-        } else if (null != distributionProp.getMsgtypeDistribution() && !distributionProp.getMsgtypeDistribution().isEmpty()) {
-            logger.debug("msgtype distribution");
-            result = distributionProp.getMsgtypeDistribution().get(msgtype);
-        } else if (null != distributionProp.getPercentageDistribution() && !distributionProp.getPercentageDistribution().isEmpty()) {
-            logger.debug("percentage distribution");
-            if (distributionProp.isUpdate()) {
-                distributionProp.setQueuePercentage(new HashMap<String, Integer[]>());
-                int total = distributionProp.getPercentageDistribution().entrySet().stream().mapToInt(Map.Entry::getValue).sum();
-                distributionProp.setPercentageTotal(total);
-                int tmptotal = 0;
-                for (Map.Entry<String, Integer> entry: distributionProp.getPercentageDistribution().entrySet()) {
-                    distributionProp.getQueuePercentage().put(entry.getKey(), new Integer[]{tmptotal, tmptotal + entry.getValue()});
-                    tmptotal += entry.getValue();
+        if (distributionProp.getConditionMutualExclusion()) {
+            if (null != distributionProp.getDxpidDistribution() && !distributionProp.getDxpidDistribution().isEmpty()) {
+                logger.debug("dxpid distribution");
+                result = distributionProp.getDxpidDistribution().get(dxpid);
+            } else if (null != distributionProp.getMsgtypeDistribution() && !distributionProp.getMsgtypeDistribution().isEmpty()) {
+                logger.debug("msgtype distribution");
+                result = distributionProp.getMsgtypeDistribution().get(msgtype);
+            } else if (null != distributionProp.getPercentageDistribution() && !distributionProp.getPercentageDistribution().isEmpty()) {
+                logger.debug("percentage distribution");
+                if (distributionProp.isUpdate()) {
+                    distributionProp.setQueuePercentage(new HashMap<String, Integer[]>());
+                    int total = distributionProp.getPercentageDistribution().entrySet().stream().mapToInt(Map.Entry::getValue).sum();
+                    distributionProp.setPercentageTotal(total);
+                    int tmptotal = 0;
+                    for (Map.Entry<String, Integer> entry : distributionProp.getPercentageDistribution().entrySet()) {
+                        distributionProp.getQueuePercentage().put(entry.getKey(), new Integer[]{tmptotal, tmptotal + entry.getValue()});
+                        tmptotal += entry.getValue();
+                    }
+                    distributionProp.setUpdate(false);
                 }
-                distributionProp.setUpdate(false);
+
+                if (null != distributionProp.getQueuePercentage() && !distributionProp.getQueuePercentage().isEmpty()) {
+                    double randomResult = getRandomRange(distributionProp.getPercentageTotal());
+                    logger.debug("queuePercentage=[" + JSON.toJSONString(distributionProp.getQueuePercentage()) + "]");
+                    logger.debug("randomResult=[" + randomResult + "] total=[" + distributionProp.getPercentageTotal() + "]");
+                    for (Map.Entry<String, Integer[]> entry : distributionProp.getQueuePercentage().entrySet()) {
+                        if (randomResult >= entry.getValue()[0] && randomResult < entry.getValue()[1]) {
+                            result = entry.getKey();
+                            break;
+                        }
+                    }
+                }
+            } else if (null != distributionProp.getRandomDistribution() && !distributionProp.getRandomDistribution().isEmpty()) {
+                logger.debug("randomdistribution=[" + JSON.toJSONString(distributionProp.getRandomDistribution()) + "] size=[" + distributionProp.getRandomDistribution().size() + "]");
+                logger.debug("random distribution");
+                int randomIndex = getRandomIndex(distributionProp.getRandomDistribution().size() - 1);
+                logger.debug("randomIndex=[" + randomIndex + "]");
+                result = distributionProp.getRandomDistribution().get(randomIndex);
+            }
+        } else {
+            if (null != distributionProp.getDxpidDistribution() && !distributionProp.getDxpidDistribution().isEmpty()) {
+                logger.debug("dxpid distribution");
+                result = distributionProp.getDxpidDistribution().get(dxpid);
             }
 
-            if (null != distributionProp.getQueuePercentage() && !distributionProp.getQueuePercentage().isEmpty()) {
-                double randomResult = getRandomRange(distributionProp.getPercentageTotal());
-                logger.debug("queuePercentage=[" + JSON.toJSONString(distributionProp.getQueuePercentage()) + "]");
-                logger.debug("randomResult=[" + randomResult + "] total=[" + distributionProp.getPercentageTotal() + "]");
-                for (Map.Entry<String, Integer[]> entry: distributionProp.getQueuePercentage().entrySet()) {
-                    if (randomResult >= entry.getValue()[0] && randomResult < entry.getValue()[1]) {
-                        result = entry.getKey();
-                        break;
+            if (null == result && null != distributionProp.getMsgtypeDistribution() && !distributionProp.getMsgtypeDistribution().isEmpty()) {
+                logger.debug("msgtype distribution");
+                result = distributionProp.getMsgtypeDistribution().get(msgtype);
+            }
+
+            if (null == result && null != distributionProp.getPercentageDistribution() && !distributionProp.getPercentageDistribution().isEmpty()) {
+                logger.debug("percentage distribution");
+                if (distributionProp.isUpdate()) {
+                    distributionProp.setQueuePercentage(new HashMap<String, Integer[]>());
+                    int total = distributionProp.getPercentageDistribution().entrySet().stream().mapToInt(Map.Entry::getValue).sum();
+                    distributionProp.setPercentageTotal(total);
+                    int tmptotal = 0;
+                    for (Map.Entry<String, Integer> entry : distributionProp.getPercentageDistribution().entrySet()) {
+                        distributionProp.getQueuePercentage().put(entry.getKey(), new Integer[]{tmptotal, tmptotal + entry.getValue()});
+                        tmptotal += entry.getValue();
+                    }
+                    distributionProp.setUpdate(false);
+                }
+
+                if (null != distributionProp.getQueuePercentage() && !distributionProp.getQueuePercentage().isEmpty()) {
+                    double randomResult = getRandomRange(distributionProp.getPercentageTotal());
+                    logger.debug("queuePercentage=[" + JSON.toJSONString(distributionProp.getQueuePercentage()) + "]");
+                    logger.debug("randomResult=[" + randomResult + "] total=[" + distributionProp.getPercentageTotal() + "]");
+                    for (Map.Entry<String, Integer[]> entry : distributionProp.getQueuePercentage().entrySet()) {
+                        if (randomResult >= entry.getValue()[0] && randomResult < entry.getValue()[1]) {
+                            result = entry.getKey();
+                            break;
+                        }
                     }
                 }
             }
-        } else if (null != distributionProp.getRandomDistribution() && !distributionProp.getRandomDistribution().isEmpty()) {
-            logger.debug("randomdistribution=[" + JSON.toJSONString(distributionProp.getRandomDistribution()) + "] size=[" + distributionProp.getRandomDistribution().size() + "]");
-            logger.debug("random distribution");
-            int randomIndex = getRandomIndex(distributionProp.getRandomDistribution().size() - 1);
-            logger.debug("randomIndex=[" + randomIndex + "]");
-            result = distributionProp.getRandomDistribution().get(randomIndex);
-        }
 
+            if (null == result && null != distributionProp.getRandomDistribution() && !distributionProp.getRandomDistribution().isEmpty()) {
+                logger.debug("randomdistribution=[" + JSON.toJSONString(distributionProp.getRandomDistribution()) + "] size=[" + distributionProp.getRandomDistribution().size() + "]");
+                logger.debug("random distribution");
+                int randomIndex = getRandomIndex(distributionProp.getRandomDistribution().size() - 1);
+                logger.debug("randomIndex=[" + randomIndex + "]");
+                result = distributionProp.getRandomDistribution().get(randomIndex);
+            }
+        }
         if (null == result) {
             result = distributionProp.getDefaultQueue();
         }

@@ -33,9 +33,10 @@ public class SendMessageThread implements Runnable {
 
     @Override
     public void run() {
-        long startTime = System.currentTimeMillis();
+        long startTime = System.nanoTime();
         this.jmsTemplate.convertAndSend(this.queue, this.message, this.messagePostProcessor);
-        logger.info("send message to queue[" + this.queue.getBaseQueueName() + "] use[" + (System.currentTimeMillis() - startTime) + "]ms");
+        logger.info("send message to queue[" + this.queue.getBaseQueueName() + "] use["
+                + ((double)(System.nanoTime() - startTime) / 1000000.0) + "]ms");
     }
 
     public static ExecutorService getExecutorService() {

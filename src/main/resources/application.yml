@@ -11,6 +11,21 @@ distribution:
   queueName: DXP_TO_GGFW
   minConcurrency: 1
   maxConcurrency: 2
+  second:
+    hostName: 172.16.33.54
+    port: 1800
+    queueManager: DFWTINTRA
+    channel: JAVA.CHANNEL
+    ccsid: 1381
+    sessionCacheSize: 100
+  third:
+    hostName: 172.16.33.54
+    port: 1800
+    queueManager: DFWTINTRA
+    channel: JAVA.CHANNEL
+    ccsid: 1381
+    sessionCacheSize: 100
+  conditionMutualExclusion: true
   # 优先级第一 map key:dxpid, value: 队列名称 如: {DXPENT0000011951: DXP_11951_ENT}
   dxpidDistribution: {}
   # 优先级第二 map key:msgtype, value: 队列名称 如: {CEB312Message: DXP_11951_ENT}
@@ -19,7 +34,7 @@ distribution:
   percentageDistribution: {}
   # 前面三个没有，才执行最后一个 列表格式，随机分发
   randomDistribution:
-  # 所有没有区配到，就转发到默认队列
+  # 所有没有区配到，就转发到默认队列,队列后面加一个:号,走second队列管理器, 两个::号走third队列管理器
   defaultQueue: GGFW_TO_ENT
 
 logging:

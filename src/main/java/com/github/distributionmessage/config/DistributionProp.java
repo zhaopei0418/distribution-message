@@ -1,6 +1,7 @@
 package com.github.distributionmessage.config;
 
 import lombok.Data;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
@@ -24,11 +25,19 @@ public class DistributionProp {
 
     private Integer ccsid;
 
+    @Value("${distribution.second.ccsid}")
+    private Integer secondCcsid;
+
+    @Value("${distribution.third.ccsid}")
+    private Integer thirdCcsid;
+
     private String queueName;
 
     private Integer minConcurrency;
 
     private Integer maxConcurrency;
+
+    private Boolean conditionMutualExclusion;
 
     private Map<String, String> dxpidDistribution;
 

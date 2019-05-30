@@ -6,8 +6,10 @@ import com.github.distributionmessage.listener.DistributionMessageListener;
 import com.github.distributionmessage.thread.SendMessageThread;
 import com.ibm.mq.jms.MQQueue;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.integration.channel.DirectChannel;
@@ -87,13 +89,36 @@ public class IntegrationConfiguration {
 
     @Bean
     @ServiceActivator(inputChannel = ChannelConstant.IBMMQ_RECEIVE_CHANNEL)
-    public JmsSendingMessageHandler jmsSendingMessageHandler(JmsTemplate jmsTemplate) {
-        DistributionSendingMessageHandler distributionSendingMessageHandler = new DistributionSendingMessageHandler(jmsTemplate);
+    public JmsSendingMessageHandler jmsSendingMessageHandler(JmsTemplate jmsTemplate,
+                                                             @Qualifier("secondJmsTemplate") JmsTemplate secondJmsTemplate,
+                                                             @Qualifier("thirdJmsTemplate") JmsTemplate thirdJmsTemplate) {
+        DistributionSendingMessageHandler distributionSendingMessageHandler =
+                new DistributionSendingMessageHandler(jmsTemplate, secondJmsTemplate, thirdJmsTemplate);
         distributionSendingMessageHandler.setDistributionProp(this.distributionProp);
         return distributionSendingMessageHandler;
     }
 
     @Bean
+    @Primary
+    public JmsTemplate jmsTemplate(ConnectionFactory connectionFactory) {
+        JmsTemplate jmsTemplate = new JmsTemplate(connectionFactory);
+        return jmsTemplate;
+    }
+
+    @Bean(name = "secondJmsTemplate")
+    public JmsTemplate secondJmsTemplate(@Qualifier("secondConnectionFactory") ConnectionFactory connectionFactory) {
+        JmsTemplate jmsTemplate = new JmsTemplate(connectionFactory);
+        return jmsTemplate;
+    }
+
+    @Bean(name = "thirdJmsTemplate")
+    public JmsTemplate thirdJmsTemplate(@Qualifier("thirdConnectionFactory") ConnectionFactory connectionFactory) {
+        JmsTemplate jmsTemplate = new JmsTemplate(connectionFactory);
+        return jmsTemplate;
+    }
+
+    @Bean
+    @Primary
     public DefaultMessageListenerContainer defaultMessageListenerContainer(ConnectionFactory connectionFactory) {
         DefaultMessageListenerContainer defaultMessageListenerContainer = new DefaultMessageListenerContainer();
         defaultMessageListenerContainer.setConnectionFactory(connectionFactory);
@@ -105,6 +130,7 @@ public class IntegrationConfiguration {
     }
 
     @Bean
+    @Primary
     public JmsMessageDrivenEndpoint jmsMessageDrivenEndpoint(DefaultMessageListenerContainer defaultMessageListenerContainer) {
         JmsMessageDrivenEndpoint jmsMessageDrivenEndpoint = new JmsMessageDrivenEndpoint(defaultMessageListenerContainer,
                 new ChannelPublishingJmsMessageListener());
