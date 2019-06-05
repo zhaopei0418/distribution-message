@@ -6,6 +6,7 @@ import com.github.distributionmessage.thread.SendMessageThread;
 import com.github.distributionmessage.utils.CommonUtils;
 import com.github.distributionmessage.utils.DistributionUtils;
 import com.ibm.mq.jms.MQQueue;
+import com.ibm.msg.client.wmq.WMQConstants;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.springframework.integration.jms.DefaultJmsHeaderMapper;
@@ -51,6 +52,7 @@ public class DistributionSendingMessageHandler extends JmsSendingMessageHandler 
             try {
                 byte[] bytes = (byte[]) playload;
                 MQQueue queue = new MQQueue();
+                queue.setTargetClient(WMQConstants.WMQ_CLIENT_NONJMS_MQ);
                 String sm = new String(bytes, CommonConstant.CHARSET);
                 String dxpid = DistributionUtils.getDxpIdByMessage(sm);
                 String msgtype = DistributionUtils.getMessageType(sm);
