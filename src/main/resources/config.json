@@ -1,0 +1,92 @@
+{
+  "queueManagers": [
+    {
+      "qmId": 1,
+      "hostName": "172.16.33.119",
+      "port": 1800,
+      "queueManagerName": "DFWTINTRA",
+      "channel": "JAVA.CHANNEL",
+      "ccsid": 1208,
+      "minConcurrency": 1,
+      "maxConcurrency": 2,
+      "sessionCacheSize": 20
+    },
+    {
+      "qmId": 2,
+      "hostName": "172.16.33.54",
+      "port": 1800,
+      "queueManagerName": "DFWTINTRA",
+      "channel": "JAVA.CHANNEL",
+      "ccsid": 1208,
+      "minConcurrency": 1,
+      "maxConcurrency": 2,
+      "sessionCacheSize": 20
+    },
+    {
+      "qmId": 3,
+      "hostName": "172.16.33.55",
+      "port": 1800,
+      "queueManagerName": "DFWTINTRA",
+      "channel": "JAVA.CHANNEL",
+      "ccsid": 1208,
+      "minConcurrency": 1,
+      "maxConcurrency": 2,
+      "sessionCacheSize": 20
+    }
+  ],
+  "input": [
+    {
+      "qmId": 1,
+      "queueName": ["DXP_TO_GGFW", "DXP_TO_GGFW1"]
+    },
+    {
+      "qmId": 2,
+      "queueName": ["DXP_TO_GGFW", "DXP_TO_GGFW1"]
+    }
+  ],
+  "filters": [
+    {
+      "type": "dxpid",
+      "distribution": {
+        "DXPENT0000011951": 1,
+        "DXPENT0000011952": 2,
+        "DXPENT0000011953": 1
+      }
+    },
+    {
+      "type": "msgtype",
+      "distribution": {
+        "CEB312Message": 1,
+        "CEB412Message": 2
+      }
+    },
+    {
+      "type": "percentage",
+      "distribution": {
+        "1": 1,
+        "2": 3
+      }
+    },
+    {
+      "type": "random",
+      "distribution": [1, 2]
+    }
+  ],
+  "output": [
+    {
+      "outId": -1,
+      "qmId": 1,
+      "queueName": "GGFW_TO_ENT"
+    },
+    {
+      "outId": 1,
+      "qmId": 1,
+      "queueName": "ENT_TO_CUS"
+    },
+    {
+      "outId": 2,
+      "qmId": 1,
+      "queueName": "CUS_TO_ENT"
+    }
+  ]
+}
