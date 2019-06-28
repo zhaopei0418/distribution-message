@@ -54,6 +54,10 @@ public class DistributionSendingMessageHandler extends JmsSendingMessageHandler 
                 MQQueue queue = new MQQueue();
                 queue.setTargetClient(WMQConstants.WMQ_CLIENT_NONJMS_MQ);
                 String sm = new String(bytes, CommonConstant.CHARSET);
+                if (DistributionUtils.isRemoveDxpMsgSvHead(sm)) {
+                    sm = DistributionUtils.removeDxpMsgSvHead(sm);
+                    playload = sm.getBytes(CommonConstant.CHARSET);
+                }
                 String dxpid = DistributionUtils.getDxpIdByMessage(sm);
                 String msgtype = DistributionUtils.getMessageType(sm);
                 String queueName = DistributionUtils.getDestinationQueueName(this.distributionProp, dxpid, msgtype);
