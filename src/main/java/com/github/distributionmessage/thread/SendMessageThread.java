@@ -6,8 +6,12 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.core.MessagePostProcessor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ThreadPoolExecutor;
 
 @Data
 public class SendMessageThread implements Runnable {
@@ -35,7 +39,8 @@ public class SendMessageThread implements Runnable {
     public void run() {
         long startTime = System.nanoTime();
         this.jmsTemplate.convertAndSend(this.queue, this.message, this.messagePostProcessor);
-        logger.info("send message to queue[" + this.queue.getBaseQueueName() + "] use["
+        logger.info("workQueue size[" + SendMessageThread.getWorkQueueSize()
+                +"] send message to queue[" + this.queue.getBaseQueueName() + "] use["
                 + ((double)(System.nanoTime() - startTime) / 1000000.0) + "]ms");
     }
 
@@ -45,5 +50,18 @@ public class SendMessageThread implements Runnable {
 
     public static void setExecutorService(ExecutorService executorService) {
         SendMessageThread.executorService = executorService;
+    }
+
+    public static int getWorkQueueSize() {
+        int result = 0;
+        if (executorService != null) {
+            if (executorService instanceof ThreadPoolExecutor) {
+                BlockingQueue<Runnable> workQueue = ((ThreadPoolExecutor)executorService).getQueue();
+                if (workQueue instanceof LinkedBlockingDeque) {
+                    result = ((LinkedBlockingDeque)workQueue).size();
+                }
+            }
+        }
+        return result;
     }
 }
