@@ -77,8 +77,7 @@ public class DistributionSendingMessageHandler extends JmsSendingMessageHandler 
                 queue.setBaseQueueName(queueName);
 //                this.jmsTemplate.convertAndSend(queue, playload, messagePostProcessor);
                 SendMessageThread.getExecutorService().execute(new SendMessageThread(useJmsTemplate, playload, queue, messagePostProcessor));
-                logger.info("workQueue size[" + SendMessageThread.getWorkQueueSize()
-                        + "] dxpId=[" + dxpid + "] messageType=["
+                logger.info("dxpId=[" + dxpid + "] messageType=["
                         + msgtype + "] ccsid=[" + useCcsid + "] distributionQueue=[" + queueName + "] use["
                         + ((double)(System.nanoTime() - startTime) / 1000000.0) + "]ms");
             } catch (Exception e) {

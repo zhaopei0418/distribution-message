@@ -31,7 +31,7 @@ public class DistributionMessageApplication {
 	@Primary
 	public ConnectionFactory connectionFactory() throws Exception {
 		CachingConnectionFactory cachingConnectionFactory = new CachingConnectionFactory();
-		cachingConnectionFactory.setSessionCacheSize(this.distributionProp.getMaxConcurrency() * 10);
+		cachingConnectionFactory.setSessionCacheSize(this.distributionProp.getMaxConcurrency() * 2);
 		MQQueueConnectionFactory mqQueueConnectionFactory = new MQQueueConnectionFactory();
 		mqQueueConnectionFactory.setHostName(this.distributionProp.getHostName());
 		mqQueueConnectionFactory.setPort(this.distributionProp.getPort());

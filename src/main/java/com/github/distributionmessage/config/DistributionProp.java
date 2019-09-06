@@ -37,6 +37,12 @@ public class DistributionProp {
 
     private Integer maxConcurrency;
 
+    private Integer keepAliveSeconds;
+
+    private Integer queueCapacity;
+
+    private String  threadNamePrefix;
+
     private Boolean conditionMutualExclusion;
 
     private Map<String, String> dxpidDistribution;

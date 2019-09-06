@@ -23,6 +23,7 @@ import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.listener.DefaultMessageListenerContainer;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
@@ -32,6 +33,7 @@ import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 @Configuration
 public class IntegrationConfiguration {
@@ -118,6 +120,18 @@ public class IntegrationConfiguration {
     }
 
     @Bean
+    public ThreadPoolTaskExecutor threadPoolTaskExecutor() {
+        ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
+        threadPoolTaskExecutor.setCorePoolSize(this.distributionProp.getMinConcurrency());
+        threadPoolTaskExecutor.setMaxPoolSize(this.distributionProp.getMaxConcurrency());
+        threadPoolTaskExecutor.setKeepAliveSeconds(this.distributionProp.getKeepAliveSeconds());
+        threadPoolTaskExecutor.setQueueCapacity(this.distributionProp.getQueueCapacity());
+        threadPoolTaskExecutor.setThreadNamePrefix(this.distributionProp.getThreadNamePrefix());
+        threadPoolTaskExecutor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        return threadPoolTaskExecutor;
+    }
+
+    @Bean
     @Primary
     public DefaultMessageListenerContainer defaultMessageListenerContainer(ConnectionFactory connectionFactory) {
         DefaultMessageListenerContainer defaultMessageListenerContainer = new DefaultMessageListenerContainer();
@@ -126,6 +140,8 @@ public class IntegrationConfiguration {
             + this.distributionProp.getMaxConcurrency());
 //        defaultMessageListenerContainer.setMessageListener(this.distributionMessageListener);
         defaultMessageListenerContainer.setDestinationName(this.distributionProp.getQueueName());
+        defaultMessageListenerContainer.setTaskExecutor(threadPoolTaskExecutor());
+        defaultMessageListenerContainer.setCacheLevel(DefaultMessageListenerContainer.CACHE_CONSUMER);
         return defaultMessageListenerContainer;
     }
 

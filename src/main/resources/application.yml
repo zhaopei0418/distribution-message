@@ -11,6 +11,9 @@ distribution:
   queueName: DXP_TO_GGFW
   minConcurrency: 1
   maxConcurrency: 2
+  keepAliveSeconds: 3000
+  queueCapacity: 20000
+  threadNamePrefix: 119-DFWTINTRA-DXP_TO_GGFW-
   second:
     hostName: 172.16.33.54
     port: 1800
