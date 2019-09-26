@@ -3,6 +3,7 @@ server:
 
 
 distribution:
+  cacheSize: 2000
   hostName: 172.16.33.119
   port: 1800
   queueManager: DFWTINTRA

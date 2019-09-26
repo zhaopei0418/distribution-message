@@ -1,6 +1,7 @@
 package com.github.distributionmessage.handler;
 
 import com.github.distributionmessage.config.DistributionProp;
+import com.github.distributionmessage.config.IntegrationConfiguration;
 import com.github.distributionmessage.constant.CommonConstant;
 import com.github.distributionmessage.thread.SendMessageThread;
 import com.github.distributionmessage.utils.CommonUtils;
@@ -17,9 +18,12 @@ import org.springframework.jms.core.MessagePostProcessor;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 
+import java.util.concurrent.BlockingQueue;
+
 @Data
 @EqualsAndHashCode(callSuper=false)
 public class DistributionSendingMessageHandler extends JmsSendingMessageHandler {
+
 
     private final JmsTemplate jmsTemplate;
 
@@ -76,8 +80,9 @@ public class DistributionSendingMessageHandler extends JmsSendingMessageHandler 
                 queue.setCCSID(useCcsid);
                 queue.setBaseQueueName(queueName);
 //                this.jmsTemplate.convertAndSend(queue, playload, messagePostProcessor);
+                IntegrationConfiguration.CACHE_QUEUE.put(1);
                 SendMessageThread.getExecutorService().execute(new SendMessageThread(useJmsTemplate, playload, queue, messagePostProcessor));
-                logger.info("dxpId=[" + dxpid + "] messageType=["
+                logger.info("cache size [" + IntegrationConfiguration.CACHE_QUEUE.size() + "] dxpId=[" + dxpid + "] messageType=["
                         + msgtype + "] ccsid=[" + useCcsid + "] distributionQueue=[" + queueName + "] use["
                         + ((double)(System.nanoTime() - startTime) / 1000000.0) + "]ms");
             } catch (Exception e) {

@@ -1,5 +1,6 @@
 package com.github.distributionmessage.thread;
 
+import com.github.distributionmessage.config.IntegrationConfiguration;
 import com.ibm.mq.jms.MQQueue;
 import lombok.Data;
 import org.apache.commons.logging.Log;
@@ -38,8 +39,9 @@ public class SendMessageThread implements Runnable {
     @Override
     public void run() {
         long startTime = System.nanoTime();
+        IntegrationConfiguration.CACHE_QUEUE.poll();
         this.jmsTemplate.convertAndSend(this.queue, this.message, this.messagePostProcessor);
-        logger.info("send message to queue[" + this.queue.getBaseQueueName() + "] use["
+        logger.info("cache size [" + IntegrationConfiguration.CACHE_QUEUE.size() + "] send message to queue[" + this.queue.getBaseQueueName() + "] use["
                 + ((double)(System.nanoTime() - startTime) / 1000000.0) + "]ms");
     }
 

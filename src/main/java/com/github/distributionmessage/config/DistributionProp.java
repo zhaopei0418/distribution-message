@@ -15,6 +15,8 @@ public class DistributionProp {
 
     private boolean update = true;
 
+    private Integer cacheSize;
+
     private String hostName;
 
     private Integer port;

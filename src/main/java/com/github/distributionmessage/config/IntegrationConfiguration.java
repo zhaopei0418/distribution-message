@@ -4,7 +4,6 @@ import com.github.distributionmessage.constant.ChannelConstant;
 import com.github.distributionmessage.handler.DistributionSendingMessageHandler;
 import com.github.distributionmessage.listener.DistributionMessageListener;
 import com.github.distributionmessage.thread.SendMessageThread;
-import com.ibm.mq.jms.MQQueue;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -12,7 +11,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.integration.annotation.ServiceActivator;
-import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.channel.PublishSubscribeChannel;
 import org.springframework.integration.file.FileNameGenerator;
 import org.springframework.integration.file.FileWritingMessageHandler;
@@ -28,15 +26,18 @@ import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
 import javax.jms.ConnectionFactory;
-import javax.jms.JMSException;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 
 @Configuration
 public class IntegrationConfiguration {
+
+    public static BlockingQueue<Integer> CACHE_QUEUE;
 
     @Autowired
     private DistributionMessageListener distributionMessageListener;
@@ -46,6 +47,7 @@ public class IntegrationConfiguration {
 
     @PostConstruct
     public void initialization() {
+        CACHE_QUEUE = new LinkedBlockingQueue<Integer>(this.distributionProp.getCacheSize());
         SendMessageThread.setExecutorService(Executors.newFixedThreadPool(this.distributionProp.getMinConcurrency()));
     }
 
