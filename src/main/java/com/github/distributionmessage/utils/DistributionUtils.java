@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.github.distributionmessage.config.DistributionProp;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -52,7 +53,7 @@ public class DistributionUtils {
             } else if (null != distributionProp.getRandomDistribution() && !distributionProp.getRandomDistribution().isEmpty()) {
                 logger.debug("randomdistribution=[" + JSON.toJSONString(distributionProp.getRandomDistribution()) + "] size=[" + distributionProp.getRandomDistribution().size() + "]");
                 logger.debug("random distribution");
-                int randomIndex = getRandomIndex(distributionProp.getRandomDistribution().size() - 1);
+                int randomIndex = getRandomIndex(distributionProp.getRandomDistribution().size());
                 logger.debug("randomIndex=[" + randomIndex + "]");
                 result = distributionProp.getRandomDistribution().get(randomIndex);
             }
@@ -97,7 +98,7 @@ public class DistributionUtils {
             if (null == result && null != distributionProp.getRandomDistribution() && !distributionProp.getRandomDistribution().isEmpty()) {
                 logger.debug("randomdistribution=[" + JSON.toJSONString(distributionProp.getRandomDistribution()) + "] size=[" + distributionProp.getRandomDistribution().size() + "]");
                 logger.debug("random distribution");
-                int randomIndex = getRandomIndex(distributionProp.getRandomDistribution().size() - 1);
+                int randomIndex = getRandomIndex(distributionProp.getRandomDistribution().size());
                 logger.debug("randomIndex=[" + randomIndex + "]");
                 result = distributionProp.getRandomDistribution().get(randomIndex);
             }
@@ -105,15 +106,28 @@ public class DistributionUtils {
         if (null == result) {
             result = distributionProp.getDefaultQueue();
         }
-        return result;
+        return getRandomQueueName(result);
     }
 
     private static int getRandomIndex(int length) {
-        return (int) Math.round(Math.random() * length);
+        return (int) (Math.random() * length);
     }
 
     private static double getRandomRange(int num) {
         return Math.random() * num;
+    }
+
+    private static String getRandomQueueName(String queueNames) {
+        if (StringUtils.isEmpty(queueNames)) {
+            return null;
+        }
+
+        String[] queueNameArr = queueNames.split(",");
+        if (queueNameArr.length == 1) {
+            return queueNameArr[0];
+        }
+
+        return queueNameArr[getRandomIndex(queueNameArr.length)];
     }
 
     public static boolean isRemoveDxpMsgSvHead(String message) {
@@ -162,6 +176,13 @@ public class DistributionUtils {
         }
         return null;
     }
+
+    //public static void main(String[] args) {
+    //    String queueNames = "DXP_TO_GGFW,ENT_TO_GGFW:,DXP_TO_GGFW::";
+    //    for (int i = 0; i < 20; i++) {
+    //        System.out.println(getRandomQueueName(queueNames));
+    //    }
+    //}
 
 //    public static void main(String[] args) {
 //        String message = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
