@@ -158,7 +158,7 @@ public class DistributionUtils {
         }
         int dxpMsgEndIndex = message.lastIndexOf("</DxpMsg>");
 
-        return message.substring(dxpMsgStartIndex, dxpMsgEndIndex + 9);
+        return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + message.substring(dxpMsgStartIndex, dxpMsgEndIndex + 9);
     }
 
     public static String getDxpIdByMessage(String message) {
