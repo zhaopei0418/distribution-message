@@ -144,13 +144,21 @@ public class DistributionUtils {
     }
 
     public static String removeDxpMsgSvHead(String message) {
-        Pattern pattern = Pattern.compile("<DxpMsg\\s+xmlns.+>(.|\\s)+</DxpMsg>");
-        Matcher matcher = pattern.matcher(message);
-        if (matcher.find()) {
-            return matcher.group();
-        }
+//        Pattern pattern = Pattern.compile("<DxpMsg\\s+xmlns.+>(.|\\s)+</DxpMsg>");
+//        Matcher matcher = pattern.matcher(message);
+//        if (matcher.find()) {
+//            return matcher.group();
+//        }
+//
+//        return message;
 
-        return message;
+        int dxpMsgStartIndex = message.indexOf("<DxpMsg ");
+        if (dxpMsgStartIndex == -1) {
+            dxpMsgStartIndex = message.indexOf("<DxpMsg>");
+        }
+        int dxpMsgEndIndex = message.lastIndexOf("</DxpMsg>");
+
+        return message.substring(dxpMsgStartIndex, dxpMsgEndIndex + 9);
     }
 
     public static String getDxpIdByMessage(String message) {
