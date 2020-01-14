@@ -4,6 +4,7 @@ import com.github.distributionmessage.constant.ChannelConstant;
 import com.github.distributionmessage.handler.DistributionSendingMessageHandler;
 import com.github.distributionmessage.listener.DistributionMessageListener;
 import com.github.distributionmessage.thread.SendMessageThread;
+import com.github.distributionmessage.utils.CommonUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -128,7 +129,7 @@ public class IntegrationConfiguration {
         threadPoolTaskExecutor.setMaxPoolSize(this.distributionProp.getMaxConcurrency());
         threadPoolTaskExecutor.setKeepAliveSeconds(this.distributionProp.getKeepAliveSeconds());
         threadPoolTaskExecutor.setQueueCapacity(this.distributionProp.getQueueCapacity());
-        threadPoolTaskExecutor.setThreadNamePrefix(this.distributionProp.getThreadNamePrefix());
+        threadPoolTaskExecutor.setThreadNamePrefix(this.distributionProp.getThreadNamePrefix() + this.distributionProp.getQueueName().split(",")[0].trim() + "-0-");
         threadPoolTaskExecutor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         return threadPoolTaskExecutor;
     }
@@ -141,7 +142,7 @@ public class IntegrationConfiguration {
         defaultMessageListenerContainer.setConcurrency(this.distributionProp.getMinConcurrency() + "-"
             + this.distributionProp.getMaxConcurrency());
 //        defaultMessageListenerContainer.setMessageListener(this.distributionMessageListener);
-        defaultMessageListenerContainer.setDestinationName(this.distributionProp.getQueueName());
+        defaultMessageListenerContainer.setDestinationName(this.distributionProp.getQueueName().split(",")[0].trim());
         defaultMessageListenerContainer.setTaskExecutor(threadPoolTaskExecutor());
         defaultMessageListenerContainer.setCacheLevel(DefaultMessageListenerContainer.CACHE_CONSUMER);
         return defaultMessageListenerContainer;

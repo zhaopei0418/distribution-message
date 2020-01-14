@@ -14,7 +14,15 @@ distribution:
   maxConcurrency: 2
   keepAliveSeconds: 3000
   queueCapacity: 20000
-  threadNamePrefix: 119-DFWTINTRA-DXP_TO_GGFW-
+  threadNamePrefix: 119-DFWTINTRA-
+  otherInputQueue:
+    - {hostName: 172.16.33.119, port: 1800, queueManager: DFWTINTRA, channel: JAVA.CHANNEL, ccsid: 1208, queueName: DXP_TO_GGFW,
+       minConcurrency: 1, maxConcurrency: 2, keepAliveSeconds: 3000, queueCapacity: 20000, threadNamePrefix: test
+      }
+    - {hostName: 172.16.33.119, port: 1800, queueManager: DFWTINTRA, channel: JAVA.CHANNEL, ccsid: 1208, queueName: DXP_TO_GGFW,
+       minConcurrency: 1, maxConcurrency: 2, keepAliveSeconds: 3000, queueCapacity: 20000, threadNamePrefix: test
+      }
+
   second:
     hostName: 172.16.33.54
     port: 1800
