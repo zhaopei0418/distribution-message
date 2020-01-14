@@ -45,6 +45,8 @@ public class DistributionProp {
 
     private String  threadNamePrefix;
 
+    private List<String> otherInputQueue;
+
     private Boolean conditionMutualExclusion;
 
     private Map<String, String> dxpidDistribution;

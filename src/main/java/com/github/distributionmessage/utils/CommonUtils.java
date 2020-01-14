@@ -51,10 +51,6 @@ public class CommonUtils {
         Map<String, String> propertyReferenceMap = null;
         List<Object[]> constructorArgList = null;
         MQQueueConnectionFactory mqQueueConnectionFactory = null;
-        CachingConnectionFactory cachingConnectionFactory = null;
-        ThreadPoolTaskExecutor threadPoolTaskExecutor = null;
-        DefaultMessageListenerContainer defaultMessageListenerContainer = null;
-        JmsMessageDrivenEndpoint jmsMessageDrivenEndpoint = null;
         String connectionFactoryBeanName = null;
         String taskExecutorBeanName = null;
         String listenerContainerBeanName = null;
@@ -117,6 +113,126 @@ public class CommonUtils {
                 }
             }
         }
+        initOtherListenerContainer();
+    }
+
+    private static void initOtherListenerContainer() {
+        DefaultListableBeanFactory defaultListableBeanFactory = (DefaultListableBeanFactory) applicationContext.getAutowireCapableBeanFactory();
+        DistributionProp distributionProp = defaultListableBeanFactory.getBean(DistributionProp.class);
+
+        if (null == distributionProp.getOtherInputQueue() || distributionProp.getOtherInputQueue().isEmpty()) {
+            logger.error("otherInputQueue error");
+            return;
+        }
+        String[] queueNames = null;
+        String[] queueInfos = null;
+        String key = "";
+        String suffix = "";
+        Map<String, Object> propertyValueMap = null;
+        Map<String, String> propertyReferenceMap = null;
+        List<Object[]> constructorArgList = null;
+        MQQueueConnectionFactory mqQueueConnectionFactory = null;
+        String connectionFactoryBeanName = null;
+        String taskExecutorBeanName = null;
+        String listenerContainerBeanName = null;
+        String jmsMessageDrivenEndpointBeanName = null;
+        String tmpQueueName = null;
+        String hostName = null;
+        Integer port = null;
+        String queueManager = null;
+        String channel = null;
+        Integer ccsid = null;
+        String queueName = null;
+        Integer minConcurrency = null;
+        Integer maxConcurrency = null;
+        Integer keepAliveSeconds = null;
+        Integer queueCapacity = null;
+        String threadNamePrefix = null;
+
+        for (String inputQueueInfo : distributionProp.getOtherInputQueue()) {
+            queueInfos = inputQueueInfo.split("\\|");
+            for (int i = 0; i < queueInfos.length; i++) {
+                logger.info("queueInfo=[" + i + "]=[" + queueInfos[i] + "]");
+            }
+            if (queueInfos.length < 11) {
+                continue;
+            }
+            hostName = queueInfos[0].trim();
+            port = Integer.valueOf(queueInfos[1].trim());
+            queueManager = queueInfos[2].trim();
+            channel = queueInfos[3].trim();
+            ccsid = Integer.valueOf(queueInfos[4].trim());
+            queueName = queueInfos[5].trim();
+            minConcurrency = Integer.valueOf(queueInfos[6].trim());
+            maxConcurrency = Integer.valueOf(queueInfos[7].trim());
+            keepAliveSeconds = Integer.valueOf(queueInfos[8].trim());
+            queueCapacity = Integer.valueOf(queueInfos[9].trim());
+            threadNamePrefix = queueInfos[10].trim();
+            key = hostName + "-" + port + "-";
+            try {
+                queueNames = queueName.split(",");
+                if (queueNames.length > 0) {
+                    for (int i = 0; i < queueNames.length; i++) {
+                        tmpQueueName = queueNames[i].trim();
+                        suffix = tmpQueueName + "-" + i + "-";
+                        propertyValueMap = new HashMap<>();
+                        propertyReferenceMap = new HashMap<>();
+                        constructorArgList = new ArrayList<>();
+
+                        try {
+                            connectionFactoryBeanName = key + "connectionFactory" + suffix;
+                            taskExecutorBeanName = key + "taskExecutor" + suffix;
+                            listenerContainerBeanName = key + "listenerContainer" + suffix;
+                            jmsMessageDrivenEndpointBeanName = key + "messageDrivenEndpoint" + suffix;
+
+                            propertyValueMap.put("sessionCacheSize", maxConcurrency * 2);
+                            mqQueueConnectionFactory = new MQQueueConnectionFactory();
+                            mqQueueConnectionFactory.setHostName(hostName);
+                            mqQueueConnectionFactory.setPort(port);
+                            mqQueueConnectionFactory.setQueueManager(queueManager);
+                            mqQueueConnectionFactory.setChannel(channel);
+                            mqQueueConnectionFactory.setCCSID(ccsid);
+                            mqQueueConnectionFactory.setTransportType(WMQConstants.WMQ_CM_CLIENT);
+                            propertyValueMap.put("targetConnectionFactory", mqQueueConnectionFactory);
+                            createAndregisterBean(CachingConnectionFactory.class, connectionFactoryBeanName, propertyValueMap, null, null);
+
+                            propertyValueMap.clear();
+                            propertyValueMap.put("corePoolSize", minConcurrency);
+                            propertyValueMap.put("maxPoolSize", maxConcurrency);
+                            propertyValueMap.put("keepAliveSeconds", keepAliveSeconds);
+                            propertyValueMap.put("queueCapacity", queueCapacity);
+                            propertyValueMap.put("threadNamePrefix", threadNamePrefix + suffix);
+                            propertyValueMap.put("rejectedExecutionHandler", new ThreadPoolExecutor.CallerRunsPolicy());
+                            createAndregisterBean(ThreadPoolTaskExecutor.class, taskExecutorBeanName, propertyValueMap, null, null);
+
+
+                            propertyValueMap.clear();
+                            propertyValueMap.put("concurrency", minConcurrency + "-" + maxConcurrency);
+                            propertyValueMap.put("destinationName", queueNames[i].trim());
+                            propertyValueMap.put("cacheLevel", DefaultMessageListenerContainer.CACHE_CONSUMER);
+                            propertyReferenceMap.put("connectionFactory", connectionFactoryBeanName);
+                            propertyReferenceMap.put("taskExecutor", taskExecutorBeanName);
+                            createAndregisterBean(DefaultMessageListenerContainer.class, listenerContainerBeanName, propertyValueMap, propertyReferenceMap, null);
+
+                            constructorArgList.clear();
+                            constructorArgList.add(new Object[] {true, listenerContainerBeanName});
+                            constructorArgList.add(new Object[] {false, new ChannelPublishingJmsMessageListener()});
+                            propertyValueMap.clear();
+                            propertyValueMap.put("outputChannelName", ChannelConstant.IBMMQ_RECEIVE_CHANNEL);
+                            createAndregisterBean(JmsMessageDrivenEndpoint.class, jmsMessageDrivenEndpointBeanName, propertyValueMap, null, constructorArgList);
+                            ((DefaultMessageListenerContainer) defaultListableBeanFactory.getBean(listenerContainerBeanName)).start();
+                            ((JmsMessageDrivenEndpoint) defaultListableBeanFactory.getBean(jmsMessageDrivenEndpointBeanName)).start();
+
+                        } catch (JMSException e) {
+                            logError(logger, e);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                logError(logger, e);
+            }
+        }
+
     }
 
     public static void createAndregisterBean(Class clzz, String beanName, Map<String, Object> propertyValueMap,

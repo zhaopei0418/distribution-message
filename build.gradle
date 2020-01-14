@@ -6,7 +6,7 @@ plugins {
 apply plugin: 'io.spring.dependency-management'
 
 group = 'com.github'
-version = '5.0'
+version = '6.0'
 sourceCompatibility = '1.8'
 
 repositories {
