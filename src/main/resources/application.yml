@@ -31,6 +31,8 @@ distribution:
     channel: JAVA.CHANNEL
     ccsid: 1381
     sessionCacheSize: 100
+  otherOutputQueue:
+    - 172.16.33.95|1800|DFWTINTRA|JAVA.CHANNEL|1208|100
   conditionMutualExclusion: true
   # 优先级第一 map key:dxpid, value: 队列名称 如: {DXPENT0000011951: DXP_11951_ENT}
   dxpidDistribution: {}

@@ -4,7 +4,6 @@ import com.github.distributionmessage.constant.ChannelConstant;
 import com.github.distributionmessage.handler.DistributionSendingMessageHandler;
 import com.github.distributionmessage.listener.DistributionMessageListener;
 import com.github.distributionmessage.thread.SendMessageThread;
-import com.github.distributionmessage.utils.CommonUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;

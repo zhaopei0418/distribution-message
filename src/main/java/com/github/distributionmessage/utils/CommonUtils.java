@@ -12,6 +12,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.integration.jms.ChannelPublishingJmsMessageListener;
 import org.springframework.integration.jms.JmsMessageDrivenEndpoint;
 import org.springframework.jms.connection.CachingConnectionFactory;
+import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.listener.DefaultMessageListenerContainer;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
@@ -27,7 +28,9 @@ import java.util.concurrent.ThreadPoolExecutor;
 
 public class CommonUtils {
 
-    private static List<JmsMessageDrivenEndpoint> jmsMessageDrivenEndpointList = new ArrayList<>();
+    private static List<JmsTemplate> jmsTemplateList = new ArrayList<>();
+
+    private static List<Integer> ccsidList = new ArrayList<>();
 
     private static final Log logger = LogFactory.getLog(CommonUtils.class);
 
@@ -114,6 +117,7 @@ public class CommonUtils {
             }
         }
         initOtherListenerContainer();
+        initJmsTemplateList();
     }
 
     private static void initOtherListenerContainer() {
@@ -157,19 +161,19 @@ public class CommonUtils {
             if (queueInfos.length < 11) {
                 continue;
             }
-            hostName = queueInfos[0].trim();
-            port = Integer.valueOf(queueInfos[1].trim());
-            queueManager = queueInfos[2].trim();
-            channel = queueInfos[3].trim();
-            ccsid = Integer.valueOf(queueInfos[4].trim());
-            queueName = queueInfos[5].trim();
-            minConcurrency = Integer.valueOf(queueInfos[6].trim());
-            maxConcurrency = Integer.valueOf(queueInfos[7].trim());
-            keepAliveSeconds = Integer.valueOf(queueInfos[8].trim());
-            queueCapacity = Integer.valueOf(queueInfos[9].trim());
-            threadNamePrefix = queueInfos[10].trim();
-            key = hostName + "-" + port + "-";
             try {
+                hostName = queueInfos[0].trim();
+                port = Integer.valueOf(queueInfos[1].trim());
+                queueManager = queueInfos[2].trim();
+                channel = queueInfos[3].trim();
+                ccsid = Integer.valueOf(queueInfos[4].trim());
+                queueName = queueInfos[5].trim();
+                minConcurrency = Integer.valueOf(queueInfos[6].trim());
+                maxConcurrency = Integer.valueOf(queueInfos[7].trim());
+                keepAliveSeconds = Integer.valueOf(queueInfos[8].trim());
+                queueCapacity = Integer.valueOf(queueInfos[9].trim());
+                threadNamePrefix = queueInfos[10].trim();
+                key = hostName + "-" + port + "-";
                 queueNames = queueName.split(",");
                 if (queueNames.length > 0) {
                     for (int i = 0; i < queueNames.length; i++) {
@@ -235,6 +239,74 @@ public class CommonUtils {
 
     }
 
+    private static void initJmsTemplateList() {
+        DefaultListableBeanFactory defaultListableBeanFactory = (DefaultListableBeanFactory) applicationContext.getAutowireCapableBeanFactory();
+        DistributionProp distributionProp = defaultListableBeanFactory.getBean(DistributionProp.class);
+
+        if (null == distributionProp.getOtherOutputQueue() || distributionProp.getOtherOutputQueue().isEmpty()) {
+            return;
+        }
+        String[] queueInfos = null;
+        String key = "";
+        String suffix = "";
+        Map<String, Object> propertyValueMap = null;
+        Map<String, String> propertyReferenceMap = null;
+        List<Object[]> constructorArgList = null;
+        MQQueueConnectionFactory mqQueueConnectionFactory = null;
+        String connectionFactoryBeanName = null;
+        String jmsTemplateBeanName = null;
+        String hostName = null;
+        Integer port = null;
+        String queueManager = null;
+        String channel = null;
+        Integer ccsid = null;
+        Integer sessionCacheSize = null;
+        for (String outQueueInfo : distributionProp.getOtherOutputQueue()) {
+            queueInfos = outQueueInfo.split("\\|");
+            propertyValueMap = new HashMap<>();
+            propertyReferenceMap = new HashMap<>();
+            constructorArgList = new ArrayList<>();
+            for (int i = 0; i < queueInfos.length; i++) {
+                logger.info("outputQueueInfo=[" + i + "]=[" + queueInfos[i] + "]");
+            }
+            if (queueInfos.length < 6) {
+                continue;
+            }
+            try {
+                hostName = queueInfos[0].trim();
+                port = Integer.valueOf(queueInfos[1].trim());
+                queueManager = queueInfos[2].trim();
+                channel = queueInfos[3].trim();
+                ccsid = Integer.valueOf(queueInfos[4].trim());
+                sessionCacheSize = Integer.valueOf(queueInfos[5].trim());
+                key = hostName + "-" + port + "-";
+                suffix = "-" + queueManager;
+                connectionFactoryBeanName = key + "connectionFactory" + suffix;
+                jmsTemplateBeanName = key + "jmsTemplateBeanName" + suffix;
+
+                propertyValueMap.put("sessionCacheSize", sessionCacheSize);
+                mqQueueConnectionFactory = new MQQueueConnectionFactory();
+                mqQueueConnectionFactory.setHostName(hostName);
+                mqQueueConnectionFactory.setPort(port);
+                mqQueueConnectionFactory.setQueueManager(queueManager);
+                mqQueueConnectionFactory.setChannel(channel);
+                mqQueueConnectionFactory.setCCSID(ccsid);
+                mqQueueConnectionFactory.setTransportType(WMQConstants.WMQ_CM_CLIENT);
+                propertyValueMap.put("targetConnectionFactory", mqQueueConnectionFactory);
+                createAndregisterBean(CachingConnectionFactory.class, connectionFactoryBeanName, propertyValueMap, null, null);
+
+                constructorArgList.clear();
+                constructorArgList.add(new Object[] {true, connectionFactoryBeanName});
+                createAndregisterBean(JmsTemplate.class, jmsTemplateBeanName, null, null, constructorArgList);
+
+                jmsTemplateList.add((JmsTemplate) defaultListableBeanFactory.getBean(jmsTemplateBeanName));
+                ccsidList.add(ccsid);
+            } catch (Exception e) {
+                logError(logger, e);
+            }
+        }
+    }
+
     public static void createAndregisterBean(Class clzz, String beanName, Map<String, Object> propertyValueMap,
                                                                   Map<String, String> propertyReferenceMap,
                                              List<Object[]> constructorArgList) {
@@ -273,5 +345,19 @@ public class CommonUtils {
         StringWriter sw = new StringWriter();
         t.printStackTrace(new PrintWriter(sw));
         log.error(sw.toString());
+    }
+
+    public static JmsTemplate getJmsTemplateByIndex(int index) {
+        if (0 > index || jmsTemplateList.size() <= index) {
+            return null;
+        }
+        return jmsTemplateList.get(index);
+    }
+
+    public static Integer getCcsidByIndex(int index) {
+        if (0 > index || ccsidList.size() <= index) {
+            return null;
+        }
+        return ccsidList.get(index);
     }
 }

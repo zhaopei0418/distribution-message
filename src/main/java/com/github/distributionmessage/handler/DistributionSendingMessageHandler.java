@@ -73,6 +73,11 @@ public class DistributionSendingMessageHandler extends JmsSendingMessageHandler 
                     queueName = queueName.replaceAll(":", "");
                     useJmsTemplate = this.secondJmsTemplate;
                     useCcsid = this.distributionProp.getSecondCcsid();
+                } else if (queueName.indexOf("|") != -1) {
+                    String[] queueNameAndIndex = queueName.split("\\|");
+                    queueName = queueNameAndIndex[0];
+                    useJmsTemplate = CommonUtils.getJmsTemplateByIndex(Integer.valueOf(queueNameAndIndex[1]));
+                    useCcsid = CommonUtils.getCcsidByIndex(Integer.valueOf(queueNameAndIndex[1]));
                 } else {
                     useJmsTemplate = this.jmsTemplate;
                     useCcsid = this.distributionProp.getCcsid();
