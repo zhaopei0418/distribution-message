@@ -48,7 +48,7 @@ public class IntegrationConfiguration {
     @PostConstruct
     public void initialization() {
         CACHE_QUEUE = new LinkedBlockingQueue<Integer>(this.distributionProp.getCacheSize());
-        SendMessageThread.setExecutorService(Executors.newFixedThreadPool(this.distributionProp.getMinConcurrency()));
+        SendMessageThread.setExecutorService(Executors.newFixedThreadPool(this.distributionProp.getPoolSize()));
     }
 
     @Bean(name = ChannelConstant.IBMMQ_RECEIVE_CHANNEL)

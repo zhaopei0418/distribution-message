@@ -17,6 +17,8 @@ public class DistributionProp {
 
     private Integer cacheSize;
 
+    private Integer poolSize;
+
     private String hostName;
 
     private Integer port;
