@@ -2,10 +2,12 @@ package com.github.distributionmessage.utils;
 
 import com.github.distributionmessage.config.DistributionProp;
 import com.github.distributionmessage.constant.ChannelConstant;
+import com.github.distributionmessage.constant.CommonConstant;
 import com.ibm.mq.jms.MQQueueConnectionFactory;
 import com.ibm.msg.client.wmq.WMQConstants;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.context.ApplicationContext;
@@ -29,6 +31,8 @@ import java.util.concurrent.ThreadPoolExecutor;
 public class CommonUtils {
 
     private static List<JmsTemplate> jmsTemplateList = new ArrayList<>();
+
+    private static List<RabbitTemplate> rabbitTemplateList = new ArrayList<>();
 
     private static List<Integer> ccsidList = new ArrayList<>();
 
@@ -118,6 +122,7 @@ public class CommonUtils {
         }
         initOtherListenerContainer();
         initJmsTemplateList();
+        initRabbitTemplateList();
     }
 
     private static void initOtherListenerContainer() {
@@ -307,6 +312,99 @@ public class CommonUtils {
         }
     }
 
+    private static void initRabbitTemplateList() {
+        DefaultListableBeanFactory defaultListableBeanFactory = (DefaultListableBeanFactory) applicationContext.getAutowireCapableBeanFactory();
+        DistributionProp distributionProp = defaultListableBeanFactory.getBean(DistributionProp.class);
+
+        org.springframework.amqp.rabbit.connection.CachingConnectionFactory cachingConnectionFactory =
+                (org.springframework.amqp.rabbit.connection.CachingConnectionFactory) defaultListableBeanFactory.getBean("rabbitConnectionFactory");
+
+        String[] queueInfos = null;
+        String key = "";
+        String suffix = "";
+        String rabbitTemplateBeanName = "";
+        String rabbitConnectionFactoryBeanName = "rabbitConnectionFactory";
+        Map<String, Object> propertyValueMap = null;
+        List<Object[]> constructorArgList = null;
+        String host = null;
+        Integer port = null;
+        String username = null;
+        String password = null;
+        String virtualHost = null;
+        String cacheMode = null;
+        Integer channelCacheSize = null;
+        Integer connectionCacheSize = null;
+        Integer connectionLimit = null;
+
+        rabbitTemplateBeanName = "rabbitTemplateBeanName-main";
+        constructorArgList = new ArrayList<>();
+        constructorArgList.add(new Object[] {true, rabbitConnectionFactoryBeanName});
+        try {
+            createAndregisterBean(RabbitTemplate.class, rabbitTemplateBeanName, null, null, constructorArgList);
+
+            rabbitTemplateList.add((RabbitTemplate) defaultListableBeanFactory.getBean(rabbitTemplateBeanName));
+        } catch (Exception e) {
+            logError(logger, e);
+        }
+
+        if (null == distributionProp.getRabbitOtherOutputQueue() || distributionProp.getRabbitOtherOutputQueue().isEmpty()) {
+            return;
+        }
+
+        for (String outQueueInfo : distributionProp.getRabbitOtherOutputQueue()) {
+            queueInfos = outQueueInfo.split("\\|");
+            propertyValueMap = new HashMap<>();
+            constructorArgList = new ArrayList<>();
+            for (int i = 0; i < queueInfos.length; i++) {
+                logger.info("rabbitOutputQueueInfo=[" + i + "]=[" + queueInfos[i] + "]");
+            }
+
+            if (queueInfos.length < 9) {
+                continue;
+            }
+
+            try {
+                host = queueInfos[0].trim();
+                port = Integer.valueOf(queueInfos[1].trim());
+                username = queueInfos[2].trim();
+                password = queueInfos[3].trim();
+                virtualHost = queueInfos[4].trim();
+                cacheMode = queueInfos[5].trim();
+                channelCacheSize = Integer.valueOf(queueInfos[6].trim());
+                connectionCacheSize = Integer.valueOf(queueInfos[7].trim());
+                connectionLimit = Integer.valueOf(queueInfos[8].trim());
+                key = host + "-" + port + "-";
+                suffix = "-" + virtualHost;
+                rabbitConnectionFactoryBeanName = key + "rabbitConnectionFactory" + suffix;
+                rabbitTemplateBeanName = key + "rabbitTemplateBeanName" + suffix;
+
+                propertyValueMap.put("host", host);
+                propertyValueMap.put("port", port);
+                propertyValueMap.put("username", username);
+                propertyValueMap.put("password", password);
+                propertyValueMap.put("virtualHost", virtualHost);
+                propertyValueMap.put("cacheMode", CommonConstant.CACHE_MODE_CONNECTION.equals(cacheMode) ?
+                        org.springframework.amqp.rabbit.connection.CachingConnectionFactory.CacheMode.CONNECTION :
+                        org.springframework.amqp.rabbit.connection.CachingConnectionFactory.CacheMode.CHANNEL);
+                propertyValueMap.put("publisherConfirms", true);
+                propertyValueMap.put("publisherReturns", true);
+                propertyValueMap.put("channelCacheSize", channelCacheSize);
+                propertyValueMap.put("connectionCacheSize", connectionCacheSize);
+                propertyValueMap.put("connectionLimit", connectionLimit);
+                createAndregisterBean(org.springframework.amqp.rabbit.connection.CachingConnectionFactory.class, rabbitConnectionFactoryBeanName,
+                        propertyValueMap, null, null);
+
+                constructorArgList.clear();
+                constructorArgList.add(new Object[] {true, rabbitConnectionFactoryBeanName});
+                createAndregisterBean(RabbitTemplate.class, rabbitTemplateBeanName, null, null, constructorArgList);
+                rabbitTemplateList.add((RabbitTemplate) defaultListableBeanFactory.getBean(rabbitTemplateBeanName));
+
+            } catch (Exception e) {
+                logError(logger, e);
+            }
+        }
+    }
+
     public static void createAndregisterBean(Class clzz, String beanName, Map<String, Object> propertyValueMap,
                                                                   Map<String, String> propertyReferenceMap,
                                              List<Object[]> constructorArgList) {
@@ -352,6 +450,13 @@ public class CommonUtils {
             return null;
         }
         return jmsTemplateList.get(index);
+    }
+
+    public static RabbitTemplate getRabbitTelmpateByIndex(int index) {
+        if (0 > index || rabbitTemplateList.size() <= index) {
+            return null;
+        }
+        return rabbitTemplateList.get(index);
     }
 
     public static Integer getCcsidByIndex(int index) {

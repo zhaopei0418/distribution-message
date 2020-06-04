@@ -3,6 +3,7 @@ package com.github.distributionmessage.handler;
 import com.github.distributionmessage.config.DistributionProp;
 import com.github.distributionmessage.config.IntegrationConfiguration;
 import com.github.distributionmessage.constant.CommonConstant;
+import com.github.distributionmessage.thread.RabbitSendMessageThread;
 import com.github.distributionmessage.thread.SendMessageThread;
 import com.github.distributionmessage.utils.CommonUtils;
 import com.github.distributionmessage.utils.DistributionUtils;
@@ -10,6 +11,7 @@ import com.ibm.mq.jms.MQQueue;
 import com.ibm.msg.client.wmq.WMQConstants;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.integration.jms.DefaultJmsHeaderMapper;
 import org.springframework.integration.jms.JmsHeaderMapper;
 import org.springframework.integration.jms.JmsSendingMessageHandler;
@@ -51,7 +53,8 @@ public class DistributionSendingMessageHandler extends JmsSendingMessageHandler 
         Object playload = message.getPayload();
         Assert.notNull(playload, "Message playload must not be null");
         JmsTemplate useJmsTemplate = null;
-        int useCcsid;
+        RabbitTemplate userRabbitmqTemplate = null;
+        int useCcsid = 819;
         if (playload instanceof byte[]) {
             try {
                 byte[] bytes = (byte[]) playload;
@@ -69,10 +72,14 @@ public class DistributionSendingMessageHandler extends JmsSendingMessageHandler 
                     queueName = queueName.replaceAll("::", "");
                     useJmsTemplate = this.thirdJmsTemplate;
                     useCcsid = this.distributionProp.getThirdCcsid();
-                } else if (queueName.lastIndexOf(":") != -1){
+                } else if (queueName.lastIndexOf(":") != -1) {
                     queueName = queueName.replaceAll(":", "");
                     useJmsTemplate = this.secondJmsTemplate;
                     useCcsid = this.distributionProp.getSecondCcsid();
+                } else if (queueName.indexOf("||") != -1) {
+                    String[] queueNameAndIndex = queueName.split("\\|\\|");
+                    queueName = queueNameAndIndex[0];
+                    userRabbitmqTemplate = CommonUtils.getRabbitTelmpateByIndex(Integer.valueOf(queueNameAndIndex[1]));
                 } else if (queueName.indexOf("|") != -1) {
                     String[] queueNameAndIndex = queueName.split("\\|");
                     queueName = queueNameAndIndex[0];
@@ -84,9 +91,10 @@ public class DistributionSendingMessageHandler extends JmsSendingMessageHandler 
                 }
                 queue.setCCSID(useCcsid);
                 queue.setBaseQueueName(queueName);
-//                this.jmsTemplate.convertAndSend(queue, playload, messagePostProcessor);
                 IntegrationConfiguration.CACHE_QUEUE.put(1);
-                SendMessageThread.getExecutorService().execute(new SendMessageThread(useJmsTemplate, playload, queue, messagePostProcessor));
+                SendMessageThread.getExecutorService().execute(
+                        null != useJmsTemplate ? new SendMessageThread(useJmsTemplate, playload, queue, messagePostProcessor)
+                        : new RabbitSendMessageThread(userRabbitmqTemplate, playload, queueName));
                 logger.info("cache size [" + IntegrationConfiguration.CACHE_QUEUE.size() + "] dxpId=[" + dxpid + "] messageType=["
                         + msgtype + "] ccsid=[" + useCcsid + "] distributionQueue=[" + queueName + "] use["
                         + ((double)(System.nanoTime() - startTime) / 1000000.0) + "]ms");

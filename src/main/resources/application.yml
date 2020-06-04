@@ -34,6 +34,18 @@ distribution:
     sessionCacheSize: 100
   otherOutputQueue:
     - 172.16.33.95|1800|DFWTINTRA|JAVA.CHANNEL|1208|100
+  rabbitOutputQueue:
+    host: 172.16.33.14
+    port: 5672
+    username: admin
+    password: admin
+    virtualHost: /ase
+    cacheModel: CONNECTION
+    channelCacheSize: 25
+    connectionCacheSize: 16
+    connectionLimit: 32
+  rabbitOtherOutputQueue:
+    - 172.16.33.14|5672|admin|admin|ase|CONNECTION|25|16|32
   conditionMutualExclusion: true
   # 优先级第一 map key:dxpid, value: 队列名称 如: {DXPENT0000011951: DXP_11951_ENT}
   dxpidDistribution: {}

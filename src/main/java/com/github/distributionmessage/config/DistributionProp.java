@@ -51,6 +51,8 @@ public class DistributionProp {
 
     private List<String> otherOutputQueue;
 
+    private List<String> rabbitOtherOutputQueue;
+
     private Boolean conditionMutualExclusion;
 
     private Map<String, String> dxpidDistribution;

@@ -1,6 +1,7 @@
 package com.github.distributionmessage;
 
 import com.github.distributionmessage.config.DistributionProp;
+import com.github.distributionmessage.constant.CommonConstant;
 import com.github.distributionmessage.utils.CommonUtils;
 import com.ibm.mq.jms.MQQueueConnectionFactory;
 import com.ibm.msg.client.wmq.WMQConstants;
@@ -14,6 +15,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.integration.config.EnableIntegration;
 import org.springframework.jms.connection.CachingConnectionFactory;
+import org.springframework.jms.connection.ConnectionFactoryUtils;
 
 import javax.jms.ConnectionFactory;
 
@@ -88,6 +90,34 @@ public class DistributionMessageApplication {
 		mqQueueConnectionFactory.setCCSID(ccsid);
 		mqQueueConnectionFactory.setTransportType(WMQConstants.WMQ_CM_CLIENT);
 		cachingConnectionFactory.setTargetConnectionFactory(mqQueueConnectionFactory);
+		return cachingConnectionFactory;
+	}
+
+	@Bean(name = "rabbitConnectionFactory")
+	public org.springframework.amqp.rabbit.connection.ConnectionFactory rabbitConnectionFactory(
+			@Value("${distribution.rabbitOutputQueue.host}") String host,
+			@Value("${distribution.rabbitOutputQueue.port}") int port,
+			@Value("${distribution.rabbitOutputQueue.username}") String username,
+			@Value("${distribution.rabbitOutputQueue.password}") String password,
+			@Value("${distribution.rabbitOutputQueue.virtualHost}") String virtualHost,
+			@Value("${distribution.rabbitOutputQueue.cacheModel}") String cacheModel,
+			@Value("${distribution.rabbitOutputQueue.channelCacheSize}") int channelCacheSize,
+			@Value("${distribution.rabbitOutputQueue.connectionCacheSize}") int connectionCacheSize,
+			@Value("${distribution.rabbitOutputQueue.connectionLimit}") int connectionLimit
+	) {
+		org.springframework.amqp.rabbit.connection.CachingConnectionFactory cachingConnectionFactory = new org.springframework.amqp.rabbit.connection.CachingConnectionFactory();
+		cachingConnectionFactory.setHost(host);
+		cachingConnectionFactory.setUsername(username);
+		cachingConnectionFactory.setPassword(password);
+		cachingConnectionFactory.setVirtualHost(virtualHost);
+		cachingConnectionFactory.setCacheMode(CommonConstant.CACHE_MODE_CONNECTION.equals(cacheModel) ?
+				org.springframework.amqp.rabbit.connection.CachingConnectionFactory.CacheMode.CONNECTION :
+				org.springframework.amqp.rabbit.connection.CachingConnectionFactory.CacheMode.CHANNEL);
+		cachingConnectionFactory.setPublisherConfirms(true);
+		cachingConnectionFactory.setPublisherReturns(true);
+		cachingConnectionFactory.setChannelCacheSize(channelCacheSize);
+		cachingConnectionFactory.setConnectionCacheSize(connectionCacheSize);
+		cachingConnectionFactory.setConnectionLimit(connectionLimit);
 		return cachingConnectionFactory;
 	}
 }
