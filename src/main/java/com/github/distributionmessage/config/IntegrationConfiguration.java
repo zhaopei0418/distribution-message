@@ -1,6 +1,7 @@
 package com.github.distributionmessage.config;
 
 import com.github.distributionmessage.constant.ChannelConstant;
+import com.github.distributionmessage.constant.CommonConstant;
 import com.github.distributionmessage.handler.DistributionSendingMessageHandler;
 import com.github.distributionmessage.listener.DistributionMessageListener;
 import com.github.distributionmessage.thread.RabbitSendMessageThread;
@@ -10,9 +11,12 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.expression.Expression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.integration.annotation.MessagingGateway;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.integration.channel.PublishSubscribeChannel;
+import org.springframework.integration.file.FileHeaders;
 import org.springframework.integration.file.FileNameGenerator;
 import org.springframework.integration.file.FileWritingMessageHandler;
 import org.springframework.integration.jms.ChannelPublishingJmsMessageListener;
@@ -22,6 +26,7 @@ import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.listener.DefaultMessageListenerContainer;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.StringUtils;
 
@@ -94,6 +99,18 @@ public class IntegrationConfiguration {
     }
 
     @Bean
+    @ServiceActivator(inputChannel = ChannelConstant.WRITE_TO_FILE_CHANNEL)
+    public MessageHandler fileWritingMessageHandler() {
+        Expression directoryExpression = new SpelExpressionParser().parseExpression("headers.directory");
+        FileWritingMessageHandler handler = new FileWritingMessageHandler(directoryExpression);
+        handler.setExpectReply(false);
+        handler.setFileNameGenerator(new IbmmqFileNameGenerator(this.distributionProp.getFilePrefix(),
+                this.distributionProp.getFileSuffix(), true));
+        handler.setAutoCreateDirectory(true);
+        return handler;
+    }
+
+    @Bean
     @ServiceActivator(inputChannel = ChannelConstant.IBMMQ_RECEIVE_CHANNEL)
     public JmsSendingMessageHandler jmsSendingMessageHandler(JmsTemplate jmsTemplate,
                                                              @Qualifier("secondJmsTemplate") JmsTemplate secondJmsTemplate,
@@ -158,4 +175,10 @@ public class IntegrationConfiguration {
         return jmsMessageDrivenEndpoint;
     }
 
+    @MessagingGateway(defaultRequestChannel = ChannelConstant.WRITE_TO_FILE_CHANNEL)
+    public interface DistributionMessageGateway {
+
+        void writeToFile(@Header(CommonConstant.FILE_HEADERS_DIRECTORY) File directory, Object data);
+
+    }
 }

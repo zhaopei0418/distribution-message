@@ -20,6 +20,7 @@ import org.springframework.jms.core.MessagePostProcessor;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 
+import java.io.File;
 import java.util.concurrent.BlockingQueue;
 
 @Data
@@ -55,6 +56,7 @@ public class DistributionSendingMessageHandler extends JmsSendingMessageHandler 
         JmsTemplate useJmsTemplate = null;
         RabbitTemplate userRabbitmqTemplate = null;
         int useCcsid = 819;
+        IntegrationConfiguration.DistributionMessageGateway distributionMessageGateway = CommonUtils.getDistributionMessageGateway();
         if (playload instanceof byte[]) {
             try {
                 byte[] bytes = (byte[]) playload;
@@ -68,7 +70,14 @@ public class DistributionSendingMessageHandler extends JmsSendingMessageHandler 
                 String dxpid = DistributionUtils.getDxpIdByMessage(sm);
                 String msgtype = DistributionUtils.getMessageType(sm);
                 String queueName = DistributionUtils.getDestinationQueueName(this.distributionProp, dxpid, msgtype);
-                if (queueName.lastIndexOf("::") != -1) {
+                logger.info("search queueName is [" + queueName + "]");
+                if (queueName.indexOf("|||") != -1) {
+                    String dir = queueName.replaceAll("\\|\\|\\|", "");
+                    distributionMessageGateway.writeToFile(new File(dir), playload);
+                    logger.info("dxpId=[" + dxpid + "] messageType=[" + msgtype + "] write to dir=[" + dir + "] use["
+                            + ((double) (System.nanoTime() - startTime) / 1000000.0) + "]ms");
+                    return;
+                } else if (queueName.lastIndexOf("::") != -1) {
                     queueName = queueName.replaceAll("::", "");
                     useJmsTemplate = this.thirdJmsTemplate;
                     useCcsid = this.distributionProp.getThirdCcsid();

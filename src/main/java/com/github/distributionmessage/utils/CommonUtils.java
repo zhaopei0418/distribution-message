@@ -1,6 +1,7 @@
 package com.github.distributionmessage.utils;
 
 import com.github.distributionmessage.config.DistributionProp;
+import com.github.distributionmessage.config.IntegrationConfiguration;
 import com.github.distributionmessage.constant.ChannelConstant;
 import com.github.distributionmessage.constant.CommonConstant;
 import com.ibm.mq.jms.MQQueueConnectionFactory;
@@ -464,5 +465,9 @@ public class CommonUtils {
             return null;
         }
         return ccsidList.get(index);
+    }
+
+    public static IntegrationConfiguration.DistributionMessageGateway getDistributionMessageGateway() {
+        return applicationContext.getBean(IntegrationConfiguration.DistributionMessageGateway.class);
     }
 }

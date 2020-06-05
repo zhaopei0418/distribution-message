@@ -70,4 +70,8 @@ public class DistributionProp {
     private List<String> randomDistribution;
 
     private String defaultQueue;
+
+    private String filePrefix;
+
+    private String fileSuffix;
 }
