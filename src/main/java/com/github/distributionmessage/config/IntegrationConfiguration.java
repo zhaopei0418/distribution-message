@@ -7,12 +7,8 @@ import com.github.distributionmessage.handler.DistributionSendingMessageHandler;
 import com.github.distributionmessage.listener.DistributionMessageListener;
 import com.github.distributionmessage.thread.RabbitSendMessageThread;
 import com.github.distributionmessage.thread.SendMessageThread;
-import com.github.distributionmessage.utils.CommonUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.springframework.amqp.core.AcknowledgeMode;
-import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
-import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -20,12 +16,15 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.expression.Expression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
-import org.springframework.integration.amqp.inbound.AmqpInboundChannelAdapter;
 import org.springframework.integration.annotation.MessagingGateway;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.integration.channel.PublishSubscribeChannel;
+import org.springframework.integration.endpoint.SourcePollingChannelAdapter;
 import org.springframework.integration.file.FileNameGenerator;
+import org.springframework.integration.file.FileReadingMessageSource;
 import org.springframework.integration.file.FileWritingMessageHandler;
+import org.springframework.integration.file.filters.SimplePatternFileListFilter;
+import org.springframework.integration.file.transformer.FileToByteArrayTransformer;
 import org.springframework.integration.handler.AbstractMessageHandler;
 import org.springframework.integration.jms.ChannelPublishingJmsMessageListener;
 import org.springframework.integration.jms.JmsMessageDrivenEndpoint;
@@ -35,14 +34,15 @@ import org.springframework.jms.listener.DefaultMessageListenerContainer;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
-import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.scheduling.support.PeriodicTrigger;
 import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
 import javax.jms.ConnectionFactory;
 import java.io.File;
+import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.concurrent.BlockingQueue;
@@ -80,6 +80,16 @@ public class IntegrationConfiguration {
         return new PublishSubscribeChannel();
     }
 
+    @Bean(name = ChannelConstant.FILE_RECEIVE_CHANNEL)
+    public MessageChannel fileReceiveChannel() {
+        return new PublishSubscribeChannel();
+    }
+
+    @Bean(name = ChannelConstant.BYTES_RECEIVE_CHANNEL)
+    public MessageChannel bytesReceiveChannel() {
+        return new PublishSubscribeChannel();
+    }
+
     private static MessageHandler buildFileWriteMessageHandler(String dir, FileNameGenerator fileNameGenerator, boolean split) {
         FileWritingMessageHandler handler = null;
         if (split) {
@@ -105,14 +115,6 @@ public class IntegrationConfiguration {
                         simpleDateFormat.format(Calendar.getInstance().getTime());
             }
         };
-    }
-
-//    @Bean
-//    @ServiceActivator(inputChannel = ChannelConstant.IBMMQ_RECEIVE_CHANNEL)
-    public MessageHandler receiveMessageHandler() {
-        return buildFileWriteMessageHandler("D:\\softs\\distribution-message\\mqmessage",
-                new IbmmqFileNameGenerator("IBMMQ",
-                        ".xml", true), false);
     }
 
     @Bean
@@ -190,6 +192,23 @@ public class IntegrationConfiguration {
                 new ChannelPublishingJmsMessageListener());
         jmsMessageDrivenEndpoint.setOutputChannelName(ChannelConstant.IBMMQ_RECEIVE_CHANNEL);
         return jmsMessageDrivenEndpoint;
+    }
+
+    @Bean
+    @ServiceActivator(inputChannel = ChannelConstant.FILE_RECEIVE_CHANNEL, outputChannel = ChannelConstant.IBMMQ_RECEIVE_CHANNEL)
+    public FileToByteArrayTransformer fileToByteArrayTransformer() {
+        FileToByteArrayTransformer fileToByteArrayTransformer = new FileToByteArrayTransformer();
+        fileToByteArrayTransformer.setDeleteFiles(true);
+        return fileToByteArrayTransformer;
+    }
+
+    @ServiceActivator(inputChannel = ChannelConstant.BYTES_RECEIVE_CHANNEL)
+    public void handleBytesMessage(byte[] message) {
+        try {
+            logger.info("message=[" + new String(message, CommonConstant.CHARSET) + "]");
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
     }
 
     @Bean

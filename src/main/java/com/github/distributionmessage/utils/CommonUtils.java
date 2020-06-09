@@ -20,14 +20,19 @@ import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.integration.amqp.inbound.AmqpInboundChannelAdapter;
+import org.springframework.integration.endpoint.SourcePollingChannelAdapter;
+import org.springframework.integration.file.FileReadingMessageSource;
+import org.springframework.integration.file.filters.SimplePatternFileListFilter;
 import org.springframework.integration.jms.ChannelPublishingJmsMessageListener;
 import org.springframework.integration.jms.JmsMessageDrivenEndpoint;
 import org.springframework.jms.connection.CachingConnectionFactory;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.listener.DefaultMessageListenerContainer;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.scheduling.support.PeriodicTrigger;
 
 import javax.jms.JMSException;
+import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -132,6 +137,7 @@ public class CommonUtils {
         initJmsTemplateList();
         initRabbitContainer();
         initRabbitTemplateList();
+        initDirectoryInboundAdapter();
     }
 
     private static void initOtherListenerContainer() {
@@ -540,6 +546,79 @@ public class CommonUtils {
 
             } catch (Exception e) {
                 logError(logger, e);
+            }
+        }
+    }
+
+    private static void initDirectoryInboundAdapter() {
+        DefaultListableBeanFactory defaultListableBeanFactory = (DefaultListableBeanFactory) applicationContext.getAutowireCapableBeanFactory();
+        DistributionProp distributionProp = defaultListableBeanFactory.getBean(DistributionProp.class);
+        if (null == distributionProp.getOtherDirectorInput() || distributionProp.getOtherDirectorInput().isEmpty()) {
+            logger.error("otherDirectoryInput error");
+            return;
+        }
+
+        Map<String, Object> propertyValueMap = null;
+        String[] directoryInfos = null;
+        String key = "";
+        String suffix = "";
+        String directory = null;
+        String dir = null;
+        String[] directories = null;
+        String fileFilter = null;
+        Integer periodic = null;
+        Integer maxMessagesPrePoll = null;
+        Integer minConcurrency = null;
+        Integer maxConcurrency = null;
+        Integer keepAliveSeconds = null;
+        Integer queueCapacity = null;
+        String threadNamePrefix = null;
+        String pollingChannelAdapterBeanName = null;
+        FileReadingMessageSource fileReadingMessageSource = null;
+        ThreadPoolTaskExecutor threadPoolTaskExecutor = null;
+
+        for (String inDirInfo : distributionProp.getOtherDirectorInput()) {
+            directoryInfos = inDirInfo.split("\\|");
+            if (directoryInfos.length < 9) {
+                continue;
+            }
+
+            propertyValueMap = new HashMap<>();
+            directory = directoryInfos[0].trim();
+            fileFilter = directoryInfos[1].trim();
+            periodic = Integer.valueOf(directoryInfos[2].trim());
+            maxMessagesPrePoll = Integer.valueOf(directoryInfos[3].trim());
+            minConcurrency = Integer.valueOf(directoryInfos[4].trim());
+            maxConcurrency = Integer.valueOf(directoryInfos[5].trim());
+            keepAliveSeconds = Integer.valueOf(directoryInfos[6].trim());
+            queueCapacity = Integer.valueOf(directoryInfos[7].trim());
+            threadNamePrefix = directoryInfos[8];
+            directories = directory.split(",");
+            key = "directory-";
+            for (int i = 0; i < directories.length; i++) {
+                dir = directories[i];
+                suffix = dir + "-" + i + "-";
+                pollingChannelAdapterBeanName = key + "SourcePollingChannelAdapter" + suffix;
+                fileReadingMessageSource = new FileReadingMessageSource();
+                fileReadingMessageSource.setDirectory(new File(dir));
+                fileReadingMessageSource.setFilter(new SimplePatternFileListFilter(fileFilter));
+                threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
+                threadPoolTaskExecutor.initialize();
+                threadPoolTaskExecutor.setCorePoolSize(minConcurrency);
+                threadPoolTaskExecutor.setMaxPoolSize(maxConcurrency);
+                threadPoolTaskExecutor.setKeepAliveSeconds(keepAliveSeconds);
+                threadPoolTaskExecutor.setQueueCapacity(queueCapacity);
+                threadPoolTaskExecutor.setThreadNamePrefix(threadNamePrefix + suffix);
+                threadPoolTaskExecutor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+
+                propertyValueMap.put("source", fileReadingMessageSource);
+                propertyValueMap.put("outputChannelName", ChannelConstant.FILE_RECEIVE_CHANNEL);
+                propertyValueMap.put("trigger", new PeriodicTrigger(periodic));
+                propertyValueMap.put("maxMessagesPerPoll", maxMessagesPrePoll);
+                propertyValueMap.put("taskExecutor", threadPoolTaskExecutor);
+                createAndregisterBean(SourcePollingChannelAdapter.class, pollingChannelAdapterBeanName, propertyValueMap, null, null);
+
+                ((SourcePollingChannelAdapter) defaultListableBeanFactory.getBean(pollingChannelAdapterBeanName)).start();
             }
         }
     }
