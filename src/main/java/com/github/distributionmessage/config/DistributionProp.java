@@ -49,6 +49,8 @@ public class DistributionProp {
 
     private List<String> otherInputQueue;
 
+    private List<String> otherRabbitInputQueue;
+
     private List<String> otherOutputQueue;
 
     private List<String> rabbitOtherOutputQueue;

@@ -1,11 +1,18 @@
 package com.github.distributionmessage.config;
 
+import com.alibaba.fastjson.JSON;
 import com.github.distributionmessage.constant.ChannelConstant;
 import com.github.distributionmessage.constant.CommonConstant;
 import com.github.distributionmessage.handler.DistributionSendingMessageHandler;
 import com.github.distributionmessage.listener.DistributionMessageListener;
 import com.github.distributionmessage.thread.RabbitSendMessageThread;
 import com.github.distributionmessage.thread.SendMessageThread;
+import com.github.distributionmessage.utils.CommonUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.amqp.core.AcknowledgeMode;
+import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
+import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -13,19 +20,22 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.expression.Expression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.integration.amqp.inbound.AmqpInboundChannelAdapter;
 import org.springframework.integration.annotation.MessagingGateway;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.integration.channel.PublishSubscribeChannel;
-import org.springframework.integration.file.FileHeaders;
 import org.springframework.integration.file.FileNameGenerator;
 import org.springframework.integration.file.FileWritingMessageHandler;
+import org.springframework.integration.handler.AbstractMessageHandler;
 import org.springframework.integration.jms.ChannelPublishingJmsMessageListener;
 import org.springframework.integration.jms.JmsMessageDrivenEndpoint;
 import org.springframework.integration.jms.JmsSendingMessageHandler;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.listener.DefaultMessageListenerContainer;
+import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
+import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.StringUtils;
@@ -45,6 +55,8 @@ public class IntegrationConfiguration {
 
     public static BlockingQueue<Integer> CACHE_QUEUE;
 
+    private static final Log logger = LogFactory.getLog(IntegrationConfiguration.class);
+
     @Autowired
     private DistributionMessageListener distributionMessageListener;
 
@@ -60,6 +72,11 @@ public class IntegrationConfiguration {
 
     @Bean(name = ChannelConstant.IBMMQ_RECEIVE_CHANNEL)
     public MessageChannel ibmmqReceiveChannel() {
+        return new PublishSubscribeChannel();
+    }
+
+    @Bean(name = ChannelConstant.RABBIT_RECEIVE_CHANNEL)
+    public MessageChannel rabbitReceiveChannel() {
         return new PublishSubscribeChannel();
     }
 
@@ -173,6 +190,25 @@ public class IntegrationConfiguration {
                 new ChannelPublishingJmsMessageListener());
         jmsMessageDrivenEndpoint.setOutputChannelName(ChannelConstant.IBMMQ_RECEIVE_CHANNEL);
         return jmsMessageDrivenEndpoint;
+    }
+
+    @Bean
+    @ServiceActivator(inputChannel = ChannelConstant.RABBIT_RECEIVE_CHANNEL)
+    public MessageHandler rabbitMessageHandler() {
+        return new AbstractMessageHandler() {
+
+            @Override
+            protected void handleMessageInternal(Message<?> message) throws Exception {
+                logger.info(JSON.toJSONString(message.getHeaders()));
+                String payloadType = null;
+                if (message.getPayload() instanceof byte[]) {
+                    payloadType = "byte[]";
+                } else if (message.getPayload() instanceof String) {
+                    payloadType = "String";
+                }
+                logger.info(String.format("payloadType = [%s]", payloadType));
+            }
+        };
     }
 
     @MessagingGateway(defaultRequestChannel = ChannelConstant.WRITE_TO_FILE_CHANNEL)

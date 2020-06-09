@@ -18,6 +18,8 @@ distribution:
   threadNamePrefix: 119-DFWTINTRA-
   otherInputQueue:
     - 172.16.33.119|1800|DFWTINTRA|JAVA.CHANNEL|1208|DXP_TO_GGFW|1|2|3000|20000|119-DFWTINTRA-
+  # host|prot|username|password|virtualHost|cacheMode|channelCacheSize|connectionCacheSize|connectionLimit|minConcurrency|maxConcurrency|prefetchCount|keepAliveSeconds|queueCapacity|threadNamePrefix|queues
+  otherRabbitInputQueue:
   second:
     hostName: 172.16.33.54
     port: 1800

@@ -1,17 +1,25 @@
 package com.github.distributionmessage.utils;
 
+import com.alibaba.fastjson.JSON;
 import com.github.distributionmessage.config.DistributionProp;
 import com.github.distributionmessage.config.IntegrationConfiguration;
 import com.github.distributionmessage.constant.ChannelConstant;
 import com.github.distributionmessage.constant.CommonConstant;
 import com.ibm.mq.jms.MQQueueConnectionFactory;
 import com.ibm.msg.client.wmq.WMQConstants;
+import com.rabbitmq.client.Channel;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.springframework.amqp.core.AcknowledgeMode;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
+import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.context.ApplicationContext;
+import org.springframework.integration.amqp.inbound.AmqpInboundChannelAdapter;
 import org.springframework.integration.jms.ChannelPublishingJmsMessageListener;
 import org.springframework.integration.jms.JmsMessageDrivenEndpoint;
 import org.springframework.jms.connection.CachingConnectionFactory;
@@ -19,7 +27,6 @@ import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.listener.DefaultMessageListenerContainer;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
-import javax.jms.ConnectionFactory;
 import javax.jms.JMSException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -123,6 +130,7 @@ public class CommonUtils {
         }
         initOtherListenerContainer();
         initJmsTemplateList();
+        initRabbitContainer();
         initRabbitTemplateList();
     }
 
@@ -307,6 +315,136 @@ public class CommonUtils {
 
                 jmsTemplateList.add((JmsTemplate) defaultListableBeanFactory.getBean(jmsTemplateBeanName));
                 ccsidList.add(ccsid);
+            } catch (Exception e) {
+                logError(logger, e);
+            }
+        }
+    }
+
+    private static void initRabbitContainer() {
+        DefaultListableBeanFactory defaultListableBeanFactory = (DefaultListableBeanFactory) applicationContext.getAutowireCapableBeanFactory();
+        DistributionProp distributionProp = defaultListableBeanFactory.getBean(DistributionProp.class);
+        if (null == distributionProp.getOtherRabbitInputQueue() || distributionProp.getOtherRabbitInputQueue().isEmpty()) {
+            logger.error("otherRabbitInputQueue error");
+            return;
+        }
+        String[] queueInfos = null;
+        String key = "";
+        String suffix = "";
+        String rabbitConnectionFactoryBeanName = "";
+        String rabbitTaskExecutorBeanName = null;
+        String rabbitMessageListenerContainerBeanName = "";
+        String rabbitAmqpInboundChannelAdapterBeanName = "";
+        Map<String, Object> propertyValueMap = null;
+        Map<String, String> propertyReferenceMap = null;
+        List<Object[]> constructorArgList = null;
+        String host = null;
+        Integer port = null;
+        String username = null;
+        String password = null;
+        String virtualHost = null;
+        String cacheMode = null;
+        Integer channelCacheSize = null;
+        Integer connectionCacheSize = null;
+        Integer connectionLimit = null;
+        Integer minConcurrency = null;
+        Integer maxConcurrency = null;
+        Integer prefetchCount = null;
+        Integer keepAliveSeconds = null;
+        Integer queueCapacity = null;
+        String threadNamePrefix = null;
+        String[] queueNames = null;
+        for (String inQueueInfo : distributionProp.getOtherRabbitInputQueue()) {
+            queueInfos = inQueueInfo.split("\\|");
+            propertyValueMap = new HashMap<>();
+            propertyReferenceMap = new HashMap<>();
+            constructorArgList = new ArrayList<>();
+            for (int i = 0; i < queueInfos.length; i++) {
+                logger.info("rabbitInQueueInfo=[" + i + "]=[" + queueInfos[i] + "]");
+            }
+
+            if (queueInfos.length < 16) {
+                continue;
+            }
+
+            try {
+                host = queueInfos[0].trim();
+                port = Integer.valueOf(queueInfos[1].trim());
+                username = queueInfos[2].trim();
+                password = queueInfos[3].trim();
+                virtualHost = queueInfos[4].trim();
+                cacheMode = queueInfos[5].trim();
+                channelCacheSize = Integer.valueOf(queueInfos[6].trim());
+                connectionCacheSize = Integer.valueOf(queueInfos[7].trim());
+                connectionLimit = Integer.valueOf(queueInfos[8].trim());
+                minConcurrency = Integer.valueOf(queueInfos[9].trim());
+                maxConcurrency = Integer.valueOf(queueInfos[10].trim());
+                prefetchCount = Integer.valueOf(queueInfos[11].trim());
+                keepAliveSeconds = Integer.valueOf(queueInfos[12].trim());
+                queueCapacity = Integer.valueOf(queueInfos[13].trim());
+                threadNamePrefix = queueInfos[14].trim();
+                queueNames = queueInfos[15].trim().split(",");
+                key = host + "-" + port + "-";
+                suffix = queueInfos[15].trim() + "-";
+
+                rabbitConnectionFactoryBeanName = key + "rabbitInputConnectionFactory" + suffix;
+                rabbitTaskExecutorBeanName = key + "rabbitTaskExecutor" + suffix;
+                rabbitMessageListenerContainerBeanName = key + "rabbitMessageListenerContainer" + suffix;
+                rabbitAmqpInboundChannelAdapterBeanName = key + "rabbitAmqpInboundChannelAdapter" + suffix;
+
+                propertyValueMap.put("host", host);
+                propertyValueMap.put("username", username);
+                propertyValueMap.put("password", password);
+                propertyValueMap.put("virtualHost", virtualHost);
+                propertyValueMap.put("cacheMode", CommonConstant.CACHE_MODE_CONNECTION.equals(cacheMode) ?
+                        org.springframework.amqp.rabbit.connection.CachingConnectionFactory.CacheMode.CONNECTION :
+                        org.springframework.amqp.rabbit.connection.CachingConnectionFactory.CacheMode.CHANNEL);
+                propertyValueMap.put("publisherConfirms", true);
+                propertyValueMap.put("publisherReturns", true);
+                propertyValueMap.put("channelCacheSize", channelCacheSize);
+                propertyValueMap.put("connectionCacheSize", connectionCacheSize);
+                propertyValueMap.put("connectionLimit", connectionLimit);
+                createAndregisterBean(org.springframework.amqp.rabbit.connection.CachingConnectionFactory.class, rabbitConnectionFactoryBeanName, propertyValueMap, null, null);
+                logger.info("init rabbit cachingConnectionFactory finished.");
+
+                propertyValueMap.clear();
+                propertyValueMap.put("corePoolSize", maxConcurrency * 2);
+                propertyValueMap.put("maxPoolSize", maxConcurrency * 3);
+                propertyValueMap.put("keepAliveSeconds", keepAliveSeconds);
+                propertyValueMap.put("queueCapacity", queueCapacity);
+                propertyValueMap.put("threadNamePrefix", threadNamePrefix + suffix);
+                propertyValueMap.put("rejectedExecutionHandler", new ThreadPoolExecutor.CallerRunsPolicy());
+                createAndregisterBean(ThreadPoolTaskExecutor.class, rabbitTaskExecutorBeanName, propertyValueMap, null, null);
+                logger.info("init rabbit taskExecutor finished.");
+
+                propertyValueMap.clear();
+                propertyValueMap.put("queueNames", queueNames);
+                propertyValueMap.put("concurrentConsumers", minConcurrency);
+                propertyValueMap.put("maxConcurrentConsumers", maxConcurrency);
+                propertyValueMap.put("defaultRequeueRejected", false);
+                propertyValueMap.put("acknowledgeMode", AcknowledgeMode.AUTO);
+                propertyValueMap.put("prefetchCount", prefetchCount);
+//                propertyValueMap.put("consumerStartTimeout", 10 * 60 * 1000); //default 10minutes
+//                propertyValueMap.put("messageListener", (ChannelAwareMessageListener) (message, channel) -> {
+//                    logger.info("channel=[" + JSON.toJSONString(channel) + "] message=[" + JSON.toJSONString(message) + "]");
+//                });
+                propertyReferenceMap.clear();
+                propertyReferenceMap.put("taskExecutor", rabbitTaskExecutorBeanName);
+                constructorArgList.clear();
+                constructorArgList.add(new Object[] {true, rabbitConnectionFactoryBeanName});
+                createAndregisterBean(SimpleMessageListenerContainer.class, rabbitMessageListenerContainerBeanName, propertyValueMap, propertyReferenceMap, constructorArgList);
+                logger.info("init rabbit messageListenerContainer finished.");
+
+                constructorArgList.clear();
+                constructorArgList.add(new Object[] {true, rabbitMessageListenerContainerBeanName});
+                propertyValueMap.clear();
+//                propertyValueMap.put("outputChannelName", ChannelConstant.RABBIT_RECEIVE_CHANNEL);
+                propertyValueMap.put("outputChannelName", ChannelConstant.IBMMQ_RECEIVE_CHANNEL);
+                createAndregisterBean(AmqpInboundChannelAdapter.class, rabbitAmqpInboundChannelAdapterBeanName, propertyValueMap, null, constructorArgList);
+                logger.info("init rabbit amqpInboundChannelAdapter finished.");
+
+                ((AmqpInboundChannelAdapter) defaultListableBeanFactory.getBean(rabbitAmqpInboundChannelAdapterBeanName)).start();
+                ((SimpleMessageListenerContainer) defaultListableBeanFactory.getBean(rabbitMessageListenerContainerBeanName)).start();
             } catch (Exception e) {
                 logError(logger, e);
             }

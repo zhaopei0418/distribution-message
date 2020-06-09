@@ -1,5 +1,6 @@
 package com.github.distributionmessage.handler;
 
+import com.alibaba.fastjson.JSON;
 import com.github.distributionmessage.config.DistributionProp;
 import com.github.distributionmessage.config.IntegrationConfiguration;
 import com.github.distributionmessage.constant.CommonConstant;
@@ -21,10 +22,9 @@ import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 
 import java.io.File;
-import java.util.concurrent.BlockingQueue;
 
 @Data
-@EqualsAndHashCode(callSuper=false)
+@EqualsAndHashCode(callSuper = false)
 public class DistributionSendingMessageHandler extends JmsSendingMessageHandler {
 
 
@@ -49,6 +49,7 @@ public class DistributionSendingMessageHandler extends JmsSendingMessageHandler 
     protected void handleMessageInternal(Message<?> message) {
         long startTime = System.nanoTime();
         MessagePostProcessor messagePostProcessor = new HeaderMappingMessagePostProcessor(message, this.headerMapper);
+//        logger.info("message header=[" + JSON.toJSONString(message.getHeaders()) + "]");
         Assert.notNull(this.distributionProp, "distributionProp must not be null");
         Assert.notNull(message, "Message must not be null");
         Object playload = message.getPayload();
@@ -57,12 +58,20 @@ public class DistributionSendingMessageHandler extends JmsSendingMessageHandler 
         RabbitTemplate userRabbitmqTemplate = null;
         int useCcsid = 819;
         IntegrationConfiguration.DistributionMessageGateway distributionMessageGateway = CommonUtils.getDistributionMessageGateway();
-        if (playload instanceof byte[]) {
+        if (playload instanceof byte[] || playload instanceof String) {
             try {
-                byte[] bytes = (byte[]) playload;
+                byte[] bytes = null;
+                String sm = null;
+                if (playload instanceof byte[]) {
+                    bytes = (byte[]) playload;
+                    sm = new String(bytes, CommonConstant.CHARSET);
+                } else {
+                    sm = (String) playload;
+                    playload = ((String) playload).getBytes(CommonConstant.CHARSET);
+                    messagePostProcessor = null;
+                }
                 MQQueue queue = new MQQueue();
                 queue.setTargetClient(WMQConstants.WMQ_CLIENT_NONJMS_MQ);
-                String sm = new String(bytes, CommonConstant.CHARSET);
                 if (DistributionUtils.isRemoveDxpMsgSvHead(sm)) {
                     sm = DistributionUtils.removeDxpMsgSvHead(sm);
                     playload = sm.getBytes(CommonConstant.CHARSET);
@@ -103,15 +112,15 @@ public class DistributionSendingMessageHandler extends JmsSendingMessageHandler 
                 IntegrationConfiguration.CACHE_QUEUE.put(1);
                 SendMessageThread.getExecutorService().execute(
                         null != useJmsTemplate ? new SendMessageThread(useJmsTemplate, playload, queue, messagePostProcessor)
-                        : new RabbitSendMessageThread(userRabbitmqTemplate, playload, queueName));
+                                : new RabbitSendMessageThread(userRabbitmqTemplate, sm, queueName));
                 logger.info("cache size [" + IntegrationConfiguration.CACHE_QUEUE.size() + "] dxpId=[" + dxpid + "] messageType=["
                         + msgtype + "] ccsid=[" + useCcsid + "] distributionQueue=[" + queueName + "] use["
-                        + ((double)(System.nanoTime() - startTime) / 1000000.0) + "]ms");
+                        + ((double) (System.nanoTime() - startTime) / 1000000.0) + "]ms");
             } catch (Exception e) {
                 CommonUtils.logError(logger, e);
             }
         } else {
-            logger.error("message not is bytes message! message=[" + message + "]");
+            logger.error("message not is bytes message or string message! message=[" + message + "]");
         }
     }
 

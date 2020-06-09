@@ -40,7 +40,11 @@ public class SendMessageThread implements Runnable {
     public void run() {
         long startTime = System.nanoTime();
         IntegrationConfiguration.CACHE_QUEUE.poll();
-        this.jmsTemplate.convertAndSend(this.queue, this.message, this.messagePostProcessor);
+        if (null == this.messagePostProcessor) {
+            this.jmsTemplate.convertAndSend(this.queue, this.message);
+        } else {
+            this.jmsTemplate.convertAndSend(this.queue, this.message, this.messagePostProcessor);
+        }
         logger.info("cache size [" + IntegrationConfiguration.CACHE_QUEUE.size() + "] send message to queue[" + this.queue.getBaseQueueName() + "] use["
                 + ((double)(System.nanoTime() - startTime) / 1000000.0) + "]ms");
     }
