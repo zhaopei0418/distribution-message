@@ -5,54 +5,18 @@ server:
 distribution:
   cacheSize: 2000
   poolSize: 4
-  hostName: 172.16.33.119
-  port: 1800
-  queueManager: DFWTINTRA
-  channel: JAVA.CHANNEL
-  ccsid: 1208
-  queueName: DXP_TO_GGFW
-  minConcurrency: 1
-  maxConcurrency: 2
-  keepAliveSeconds: 3000
-  queueCapacity: 20000
-  threadNamePrefix: 119-DFWTINTRA-
   # host|port|queueManager|channel|ccsid|queueName|minConcurrency|maxConcurrency|keepAliveSeconds|queueCapacity|threadNamePrefix
   otherInputQueue:
   # host|port|username|password|virtualHost|cacheMode|channelCacheSize|connectionCacheSize|connectionLimit|minConcurrency|maxConcurrency|prefetchCount|keepAliveSeconds|queueCapacity|threadNamePrefix|queues
   otherRabbitInputQueue:
   # dir|fileFilter|periodic(s)|maxMessagesPerPoll|minConcurrency|maxConcurrency|keepAliveSeconds|queueCcpacity|threadNamePrefix
   otherDirectorInput:
-  second:
-    hostName: 172.16.33.54
-    port: 1800
-    queueManager: DFWTINTRA
-    channel: JAVA.CHANNEL
-    ccsid: 1381
-    sessionCacheSize: 100
-  third:
-    hostName: 172.16.33.54
-    port: 1800
-    queueManager: DFWTINTRA
-    channel: JAVA.CHANNEL
-    ccsid: 1381
-    sessionCacheSize: 100
   # hostName|port|queueManager|channel|ccsid|sessionCacheSize
   otherOutputQueue:
-  rabbitOutputQueue:
-    host: 172.16.33.14
-    port: 5672
-    username: admin
-    password: admin
-    virtualHost: /ase
-    cacheModel: CONNECTION
-    channelCacheSize: 25
-    connectionCacheSize: 16
-    connectionLimit: 32
   # host|port|username|password|virtualHost|cacheModel|channelCacheSize|connectionCacheSize|connectionLimit
   rabbitOtherOutputQueue:
   conditionMutualExclusion: true
   # 优先级第一 map key:dxpid, value: 队列名称 如: {DXPENT0000011951: DXP_11951_ENT},
-  # 队列名称不加后缀,输出是第一个输入的ibmmq, 加:是second ibmmq配置, 加::是thread的ibmmq配置
   # 加"|数字" 是 otherOutputQueue 中的索引, 加"||数字"是 rabbitOtherOutputQueue中的索引,rabbitOutputQueue为第一个,
   # 加|||则前面为输入目录名,直接把数据写入到相应目录
   dxpidDistribution: {}

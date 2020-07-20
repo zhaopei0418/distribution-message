@@ -19,34 +19,6 @@ public class DistributionProp {
 
     private Integer poolSize;
 
-    private String hostName;
-
-    private Integer port;
-
-    private String queueManager;
-
-    private String channel;
-
-    private Integer ccsid;
-
-    @Value("${distribution.second.ccsid}")
-    private Integer secondCcsid;
-
-    @Value("${distribution.third.ccsid}")
-    private Integer thirdCcsid;
-
-    private String queueName;
-
-    private Integer minConcurrency;
-
-    private Integer maxConcurrency;
-
-    private Integer keepAliveSeconds;
-
-    private Integer queueCapacity;
-
-    private String  threadNamePrefix;
-
     private List<String> otherInputQueue;
 
     private List<String> otherRabbitInputQueue;

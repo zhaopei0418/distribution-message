@@ -19,11 +19,8 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.integration.annotation.MessagingGateway;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.integration.channel.PublishSubscribeChannel;
-import org.springframework.integration.endpoint.SourcePollingChannelAdapter;
 import org.springframework.integration.file.FileNameGenerator;
-import org.springframework.integration.file.FileReadingMessageSource;
 import org.springframework.integration.file.FileWritingMessageHandler;
-import org.springframework.integration.file.filters.SimplePatternFileListFilter;
 import org.springframework.integration.file.transformer.FileToByteArrayTransformer;
 import org.springframework.integration.handler.AbstractMessageHandler;
 import org.springframework.integration.jms.ChannelPublishingJmsMessageListener;
@@ -35,12 +32,9 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
 import org.springframework.messaging.handler.annotation.Header;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import org.springframework.scheduling.support.PeriodicTrigger;
 import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
-import javax.jms.ConnectionFactory;
 import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
@@ -48,7 +42,6 @@ import java.util.Calendar;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
 
 @Configuration
 public class IntegrationConfiguration {
@@ -131,67 +124,10 @@ public class IntegrationConfiguration {
 
     @Bean
     @ServiceActivator(inputChannel = ChannelConstant.IBMMQ_RECEIVE_CHANNEL)
-    public JmsSendingMessageHandler jmsSendingMessageHandler(JmsTemplate jmsTemplate,
-                                                             @Qualifier("secondJmsTemplate") JmsTemplate secondJmsTemplate,
-                                                             @Qualifier("thirdJmsTemplate") JmsTemplate thirdJmsTemplate) {
-        DistributionSendingMessageHandler distributionSendingMessageHandler =
-                new DistributionSendingMessageHandler(jmsTemplate, secondJmsTemplate, thirdJmsTemplate);
+    public MessageHandler messageHandler() {
+        DistributionSendingMessageHandler distributionSendingMessageHandler = new DistributionSendingMessageHandler();
         distributionSendingMessageHandler.setDistributionProp(this.distributionProp);
         return distributionSendingMessageHandler;
-    }
-
-    @Bean
-    @Primary
-    public JmsTemplate jmsTemplate(ConnectionFactory connectionFactory) {
-        JmsTemplate jmsTemplate = new JmsTemplate(connectionFactory);
-        return jmsTemplate;
-    }
-
-    @Bean(name = "secondJmsTemplate")
-    public JmsTemplate secondJmsTemplate(@Qualifier("secondConnectionFactory") ConnectionFactory connectionFactory) {
-        JmsTemplate jmsTemplate = new JmsTemplate(connectionFactory);
-        return jmsTemplate;
-    }
-
-    @Bean(name = "thirdJmsTemplate")
-    public JmsTemplate thirdJmsTemplate(@Qualifier("thirdConnectionFactory") ConnectionFactory connectionFactory) {
-        JmsTemplate jmsTemplate = new JmsTemplate(connectionFactory);
-        return jmsTemplate;
-    }
-
-    @Bean
-    public ThreadPoolTaskExecutor threadPoolTaskExecutor() {
-        ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
-        threadPoolTaskExecutor.setCorePoolSize(this.distributionProp.getMinConcurrency());
-        threadPoolTaskExecutor.setMaxPoolSize(this.distributionProp.getMaxConcurrency());
-        threadPoolTaskExecutor.setKeepAliveSeconds(this.distributionProp.getKeepAliveSeconds());
-        threadPoolTaskExecutor.setQueueCapacity(this.distributionProp.getQueueCapacity());
-        threadPoolTaskExecutor.setThreadNamePrefix(this.distributionProp.getThreadNamePrefix() + this.distributionProp.getQueueName().split(",")[0].trim() + "-0-");
-        threadPoolTaskExecutor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
-        return threadPoolTaskExecutor;
-    }
-
-    @Bean
-    @Primary
-    public DefaultMessageListenerContainer defaultMessageListenerContainer(ConnectionFactory connectionFactory) {
-        DefaultMessageListenerContainer defaultMessageListenerContainer = new DefaultMessageListenerContainer();
-        defaultMessageListenerContainer.setConnectionFactory(connectionFactory);
-        defaultMessageListenerContainer.setConcurrency(this.distributionProp.getMinConcurrency() + "-"
-            + this.distributionProp.getMaxConcurrency());
-//        defaultMessageListenerContainer.setMessageListener(this.distributionMessageListener);
-        defaultMessageListenerContainer.setDestinationName(this.distributionProp.getQueueName().split(",")[0].trim());
-        defaultMessageListenerContainer.setTaskExecutor(threadPoolTaskExecutor());
-        defaultMessageListenerContainer.setCacheLevel(DefaultMessageListenerContainer.CACHE_CONSUMER);
-        return defaultMessageListenerContainer;
-    }
-
-    @Bean
-    @Primary
-    public JmsMessageDrivenEndpoint jmsMessageDrivenEndpoint(DefaultMessageListenerContainer defaultMessageListenerContainer) {
-        JmsMessageDrivenEndpoint jmsMessageDrivenEndpoint = new JmsMessageDrivenEndpoint(defaultMessageListenerContainer,
-                new ChannelPublishingJmsMessageListener());
-        jmsMessageDrivenEndpoint.setOutputChannelName(ChannelConstant.IBMMQ_RECEIVE_CHANNEL);
-        return jmsMessageDrivenEndpoint;
     }
 
     @Bean

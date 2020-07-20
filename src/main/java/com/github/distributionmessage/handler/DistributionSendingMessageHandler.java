@@ -1,6 +1,5 @@
 package com.github.distributionmessage.handler;
 
-import com.alibaba.fastjson.JSON;
 import com.github.distributionmessage.config.DistributionProp;
 import com.github.distributionmessage.config.IntegrationConfiguration;
 import com.github.distributionmessage.constant.CommonConstant;
@@ -12,10 +11,11 @@ import com.ibm.mq.jms.MQQueue;
 import com.ibm.msg.client.wmq.WMQConstants;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.integration.handler.AbstractMessageHandler;
 import org.springframework.integration.jms.DefaultJmsHeaderMapper;
 import org.springframework.integration.jms.JmsHeaderMapper;
-import org.springframework.integration.jms.JmsSendingMessageHandler;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.core.MessagePostProcessor;
 import org.springframework.messaging.Message;
@@ -24,26 +24,13 @@ import org.springframework.util.Assert;
 import java.io.File;
 
 @Data
+@NoArgsConstructor
 @EqualsAndHashCode(callSuper = false)
-public class DistributionSendingMessageHandler extends JmsSendingMessageHandler {
-
-
-    private final JmsTemplate jmsTemplate;
-
-    private final JmsTemplate secondJmsTemplate;
-
-    private final JmsTemplate thirdJmsTemplate;
+public class DistributionSendingMessageHandler extends AbstractMessageHandler {
 
     private JmsHeaderMapper headerMapper = new DefaultJmsHeaderMapper();
 
     private DistributionProp distributionProp;
-
-    public DistributionSendingMessageHandler(JmsTemplate jmsTemplate, JmsTemplate secondJmsTemplate, JmsTemplate thirdJmsTemplate) {
-        super(jmsTemplate);
-        this.jmsTemplate = jmsTemplate;
-        this.secondJmsTemplate = secondJmsTemplate;
-        this.thirdJmsTemplate = thirdJmsTemplate;
-    }
 
     @Override
     protected void handleMessageInternal(Message<?> message) {
@@ -86,14 +73,6 @@ public class DistributionSendingMessageHandler extends JmsSendingMessageHandler 
                     logger.info("dxpId=[" + dxpid + "] messageType=[" + msgtype + "] write to dir=[" + dir + "] use["
                             + ((double) (System.nanoTime() - startTime) / 1000000.0) + "]ms");
                     return;
-                } else if (queueName.lastIndexOf("::") != -1) {
-                    queueName = queueName.replaceAll("::", "");
-                    useJmsTemplate = this.thirdJmsTemplate;
-                    useCcsid = this.distributionProp.getThirdCcsid();
-                } else if (queueName.lastIndexOf(":") != -1) {
-                    queueName = queueName.replaceAll(":", "");
-                    useJmsTemplate = this.secondJmsTemplate;
-                    useCcsid = this.distributionProp.getSecondCcsid();
                 } else if (queueName.indexOf("||") != -1) {
                     String[] queueNameAndIndex = queueName.split("\\|\\|");
                     queueName = queueNameAndIndex[0];
@@ -104,8 +83,8 @@ public class DistributionSendingMessageHandler extends JmsSendingMessageHandler 
                     useJmsTemplate = CommonUtils.getJmsTemplateByIndex(Integer.valueOf(queueNameAndIndex[1]));
                     useCcsid = CommonUtils.getCcsidByIndex(Integer.valueOf(queueNameAndIndex[1]));
                 } else {
-                    useJmsTemplate = this.jmsTemplate;
-                    useCcsid = this.distributionProp.getCcsid();
+                    logger.error("无法找到对应的输出,消息无法处理!!!");
+                    return;
                 }
                 queue.setCCSID(useCcsid);
                 queue.setBaseQueueName(queueName);
