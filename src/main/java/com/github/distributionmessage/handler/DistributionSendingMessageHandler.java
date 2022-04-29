@@ -64,13 +64,14 @@ public class DistributionSendingMessageHandler extends AbstractMessageHandler {
                     playload = sm.getBytes(CommonConstant.CHARSET);
                 }
                 String dxpid = DistributionUtils.getDxpIdByMessage(sm);
+                String senderId = DistributionUtils.getSenderIdByMessage(sm);
                 String msgtype = DistributionUtils.getMessageType(sm);
-                String queueName = DistributionUtils.getDestinationQueueName(this.distributionProp, dxpid, msgtype);
+                String queueName = DistributionUtils.getDestinationQueueName(this.distributionProp, dxpid, msgtype, senderId);
                 logger.info("search queueName is [" + queueName + "]");
                 if (queueName.indexOf("|||") != -1) {
                     String dir = queueName.replaceAll("\\|\\|\\|", "");
                     distributionMessageGateway.writeToFile(new File(dir), playload);
-                    logger.info("dxpId=[" + dxpid + "] messageType=[" + msgtype + "] write to dir=[" + dir + "] use["
+                    logger.info("senderId=[" + senderId + "] dxpId=[" + dxpid + "] messageType=[" + msgtype + "] write to dir=[" + dir + "] use["
                             + ((double) (System.nanoTime() - startTime) / 1000000.0) + "]ms");
                     return;
                 } else if (queueName.indexOf("||") != -1) {
@@ -92,7 +93,7 @@ public class DistributionSendingMessageHandler extends AbstractMessageHandler {
                 SendMessageThread.getExecutorService().execute(
                         null != useJmsTemplate ? new SendMessageThread(useJmsTemplate, playload, queue, messagePostProcessor)
                                 : new RabbitSendMessageThread(userRabbitmqTemplate, sm, queueName));
-                logger.info("cache size [" + IntegrationConfiguration.CACHE_QUEUE.size() + "] dxpId=[" + dxpid + "] messageType=["
+                logger.info("cache size [" + IntegrationConfiguration.CACHE_QUEUE.size() + "] senderId=[" + senderId + "] dxpId=[" + dxpid + "] messageType=["
                         + msgtype + "] ccsid=[" + useCcsid + "] distributionQueue=[" + queueName + "] use["
                         + ((double) (System.nanoTime() - startTime) / 1000000.0) + "]ms");
             } catch (Exception e) {

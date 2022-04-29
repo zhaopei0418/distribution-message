@@ -35,6 +35,8 @@ public class DistributionProp {
 
     private Map<String, String> msgtypeDistribution;
 
+    private Map<String, String> senderIdDistribution;
+
     private Map<String, Integer> percentageDistribution;
 
     //比重总数

@@ -17,16 +17,22 @@ distribution:
   rabbitOtherOutputQueue:
   conditionMutualExclusion: true
   # 优先级第一 map key:dxpid, value: 队列名称 如: {DXPENT0000011951: DXP_11951_ENT},
-  # 加"|数字" 是 otherOutputQueue 中的索引, 加"||数字"是 rabbitOtherOutputQueue中的索引,rabbitOutputQueue为第一个,
+  # 加"|数字" 是 otherOutputQueue 中的索引, 加"||数字"是 rabbitOtherOutputQueue中的索引,rabbitOtherOutputQueue为第一个,
   # 加|||则前面为输入目录名,直接把数据写入到相应目录
   dxpidDistribution: {}
   # 优先级第二 map key:msgtype, value: 队列名称 如: {CEB312Message: DXP_11951_ENT}
   msgtypeDistribution: {}
-  # 优先级第三 map key: 队列名称, value: 比重 如: {GGFW_TO_ENT: 1, GGFW_TO_ENT_INVT: 1}
+  # 优先级第三 map key:dxpid, value: 队列名称 如: {DXPENT0000011951: DXP_11951_ENT},
+  # 加"|数字" 是 otherOutputQueue 中的索引, 加"||数字"是 rabbitOtherOutputQueue中的索引,rabbitOtherOutputQueue为第一个,
+  # 加|||则前面为输入目录名,直接把数据写入到相应目录
+  senderIdDistribution: {}
+  # 优先级第四 map key: 队列名称, value: 比重 如: {GGFW_TO_ENT: 1, GGFW_TO_ENT_INVT: 1}
   percentageDistribution: {}
-  # 前面三个没有，才执行最后一个 列表格式，随机分发
+  # 前面四个没有，才执行最后一个 列表格式，随机分发
   randomDistribution:
-  # 所有没有区配到，就转发到默认队列,队列后面加一个:号,走second队列管理器, 两个::号走third队列管理器
+  # 所有没有区配到，就转发到默认队列
+  # 加"|数字" 是 otherOutputQueue 中的索引, 加"||数字"是 rabbitOtherOutputQueue中的索引,rabbitOtherOutputQueue为第一个,
+  # 加|||则前面为输入目录名,直接把数据写入到相应目录
   defaultQueue: GGFW_TO_ENT
   filePrefix: FILE_RECEIVE_
   fileSuffix: .xml

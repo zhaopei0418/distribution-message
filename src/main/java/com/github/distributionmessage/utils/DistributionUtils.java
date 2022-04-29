@@ -15,7 +15,7 @@ public class DistributionUtils {
 
     private final static Log logger = LogFactory.getLog(DistributionUtils.class);
 
-    public static String getDestinationQueueName(DistributionProp distributionProp, String dxpid, String msgtype) {
+    public static String getDestinationQueueName(DistributionProp distributionProp, String dxpid, String msgtype, String senderId) {
         String result = null;
 
         if (distributionProp.getConditionMutualExclusion()) {
@@ -25,6 +25,9 @@ public class DistributionUtils {
             } else if (null != distributionProp.getMsgtypeDistribution() && !distributionProp.getMsgtypeDistribution().isEmpty()) {
                 logger.debug("msgtype distribution");
                 result = distributionProp.getMsgtypeDistribution().get(msgtype);
+            } else if (null != distributionProp.getSenderIdDistribution() && !distributionProp.getSenderIdDistribution().isEmpty()) {
+                logger.debug("sender distribution");
+                result = distributionProp.getSenderIdDistribution().get(senderId);
             } else if (null != distributionProp.getPercentageDistribution() && !distributionProp.getPercentageDistribution().isEmpty()) {
                 logger.debug("percentage distribution");
                 if (distributionProp.isUpdate()) {
@@ -66,6 +69,11 @@ public class DistributionUtils {
             if (null == result && null != distributionProp.getMsgtypeDistribution() && !distributionProp.getMsgtypeDistribution().isEmpty()) {
                 logger.debug("msgtype distribution");
                 result = distributionProp.getMsgtypeDistribution().get(msgtype);
+            }
+
+            if (null == result && null != distributionProp.getSenderIdDistribution() && !distributionProp.getSenderIdDistribution().isEmpty()) {
+                logger.debug("senderId distribution");
+                result = distributionProp.getSenderIdDistribution().get(senderId);
             }
 
             if (null == result && null != distributionProp.getPercentageDistribution() && !distributionProp.getPercentageDistribution().isEmpty()) {
@@ -166,6 +174,18 @@ public class DistributionUtils {
             return null;
         }
         Pattern pattern = Pattern.compile("<ReceiverId>(.+)</ReceiverId>");
+        Matcher matcher = pattern.matcher(message);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
+    }
+
+    public static String getSenderIdByMessage(String message) {
+        if (null == message) {
+            return null;
+        }
+        Pattern pattern = Pattern.compile("<SenderId>(.+)</SenderId>");
         Matcher matcher = pattern.matcher(message);
         if (matcher.find()) {
             return matcher.group(1);
