@@ -36,6 +36,8 @@ distribution:
   defaultQueue: GGFW_TO_ENT
   filePrefix: FILE_RECEIVE_
   fileSuffix: .xml
+  # 存文件的时候是否解dxp封装
+  unWrap: true
 
 logging:
   config: classpath:logback-spring.xml

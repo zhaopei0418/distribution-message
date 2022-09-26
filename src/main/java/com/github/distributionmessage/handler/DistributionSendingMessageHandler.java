@@ -70,6 +70,9 @@ public class DistributionSendingMessageHandler extends AbstractMessageHandler {
                 logger.info("search queueName is [" + queueName + "]");
                 if (queueName.indexOf("|||") != -1) {
                     String dir = queueName.replaceAll("\\|\\|\\|", "");
+                    if (this.distributionProp.getUnWrap()) {
+                        playload = DistributionUtils.unWrap(sm);
+                    }
                     distributionMessageGateway.writeToFile(new File(dir), playload);
                     logger.info("senderId=[" + senderId + "] dxpId=[" + dxpid + "] messageType=[" + msgtype + "] write to dir=[" + dir + "] use["
                             + ((double) (System.nanoTime() - startTime) / 1000000.0) + "]ms");

@@ -2,10 +2,13 @@ package com.github.distributionmessage.utils;
 
 import com.alibaba.fastjson.JSON;
 import com.github.distributionmessage.config.DistributionProp;
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.util.StringUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -203,6 +206,19 @@ public class DistributionUtils {
             return matcher.group(1);
         }
         return null;
+    }
+
+    public static byte[] unWrap(String dxp) {
+        if (null == dxp) {
+            return null;
+        }
+
+        Pattern pattern = Pattern.compile("<Data>(.+)</Data>");
+        Matcher matcher = pattern.matcher(dxp);
+        if (matcher.find()) {
+            return Base64.decodeBase64(matcher.group(1).getBytes(StandardCharsets.UTF_8));
+        }
+        return dxp.getBytes(StandardCharsets.UTF_8);
     }
 
     //public static void main(String[] args) {

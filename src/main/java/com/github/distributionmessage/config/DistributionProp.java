@@ -52,4 +52,6 @@ public class DistributionProp {
     private String filePrefix;
 
     private String fileSuffix;
+
+    private Boolean unWrap;
 }
