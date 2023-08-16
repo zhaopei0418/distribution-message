@@ -328,6 +328,7 @@ public class CommonUtils {
                 rabbitAmqpInboundChannelAdapterBeanName = key + "rabbitAmqpInboundChannelAdapter" + suffix;
 
                 propertyValueMap.put("host", host);
+                propertyValueMap.put("port", port);
                 propertyValueMap.put("username", username);
                 propertyValueMap.put("password", password);
                 propertyValueMap.put("virtualHost", virtualHost);
