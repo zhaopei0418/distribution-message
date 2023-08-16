@@ -23,6 +23,9 @@ import org.springframework.util.Assert;
 
 import java.io.File;
 
+/**
+ * @author zhaopei
+ */
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = false)
@@ -59,6 +62,7 @@ public class DistributionSendingMessageHandler extends AbstractMessageHandler {
                 }
                 MQQueue queue = new MQQueue();
                 queue.setTargetClient(WMQConstants.WMQ_CLIENT_NONJMS_MQ);
+                sm = DistributionUtils.removeTagPrefix(sm);
                 if (DistributionUtils.isRemoveDxpMsgSvHead(sm)) {
                     sm = DistributionUtils.removeDxpMsgSvHead(sm);
                     playload = sm.getBytes(CommonConstant.CHARSET);

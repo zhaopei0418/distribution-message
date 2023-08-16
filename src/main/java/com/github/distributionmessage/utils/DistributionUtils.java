@@ -141,6 +141,14 @@ public class DistributionUtils {
         return queueNameArr[getRandomIndex(queueNameArr.length)];
     }
 
+    public static String removeTagPrefix(String message) {
+        String result = message;
+        if (-1 != message.indexOf("<dxp:DxpMsg")) {
+            result = message.replaceAll("dxp:", "");
+        }
+        return result;
+    }
+
     public static boolean isRemoveDxpMsgSvHead(String message) {
         if (null == message) {
             return false;
@@ -221,12 +229,25 @@ public class DistributionUtils {
         return dxp.getBytes(StandardCharsets.UTF_8);
     }
 
-    //public static void main(String[] args) {
-    //    String queueNames = "DXP_TO_GGFW,ENT_TO_GGFW:,DXP_TO_GGFW::";
-    //    for (int i = 0; i < 20; i++) {
-    //        System.out.println(getRandomQueueName(queueNames));
-    //    }
-    //}
+    public static void main(String[] args) {
+//        String queueNames = "DXP_TO_GGFW,ENT_TO_GGFW:,DXP_TO_GGFW::";
+//        for (int i = 0; i < 20; i++) {
+//            System.out.println(getRandomQueueName(queueNames));
+//        }
+
+//        String a = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+//                "<dxp:DxpMsg\n" +
+//                "    xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\"\n" +
+//                "    xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n" +
+//                "    xmlns:dxp=\"http://www.chinaport.gov.cn/dxp\" ver=\"1.0\">\n" +
+//                "    <dxp:TransInfo>\n" +
+//                "        <dxp:CopMsgId>8bcf1fc0cd2f417c9c2bfa7218b76a60</dxp:CopMsgId>\n" +
+//                "        <dxp:SenderId>DXPEDCCEB0000002</dxp:SenderId>\n" +
+//                "        <dxp:ReceiverIds>";
+//
+//        logger.info("string a = " + a);
+//        logger.info("string b = " + removeTagPrefix(a));
+    }
 
 //    public static void main(String[] args) {
 //        String message = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +

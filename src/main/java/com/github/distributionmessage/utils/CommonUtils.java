@@ -8,6 +8,7 @@ import com.github.distributionmessage.constant.CommonConstant;
 import com.ibm.mq.jms.MQQueueConnectionFactory;
 import com.ibm.msg.client.wmq.WMQConstants;
 import com.rabbitmq.client.Channel;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.amqp.core.AcknowledgeMode;
@@ -41,6 +42,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadPoolExecutor;
 
+/**
+ * @author zhaopei
+ */
+
+@Slf4j
 public class CommonUtils {
 
     private static List<JmsTemplate> jmsTemplateList = new ArrayList<>();
@@ -62,10 +68,15 @@ public class CommonUtils {
     }
 
     public static void initParams() {
-        initOtherListenerContainer();
         initJmsTemplateList();
-        initRabbitContainer();
         initRabbitTemplateList();
+        try {
+            Thread.sleep(2000);
+        } catch (Exception e) {
+            log.error("sleep 2 second. error", e);
+        }
+        initOtherListenerContainer();
+        initRabbitContainer();
         initDirectoryInboundAdapter();
     }
 
@@ -193,6 +204,7 @@ public class CommonUtils {
         DistributionProp distributionProp = defaultListableBeanFactory.getBean(DistributionProp.class);
 
         if (null == distributionProp.getOtherOutputQueue() || distributionProp.getOtherOutputQueue().isEmpty()) {
+            logger.error("otherOutputQueue error");
             return;
         }
         String[] queueInfos = null;
@@ -391,6 +403,11 @@ public class CommonUtils {
         DefaultListableBeanFactory defaultListableBeanFactory = (DefaultListableBeanFactory) applicationContext.getAutowireCapableBeanFactory();
         DistributionProp distributionProp = defaultListableBeanFactory.getBean(DistributionProp.class);
 
+        if (null == distributionProp.getRabbitOtherOutputQueue() || distributionProp.getRabbitOtherOutputQueue().isEmpty()) {
+            logger.error("rabbitOtherOutputQueue error");
+            return;
+        }
+
         org.springframework.amqp.rabbit.connection.CachingConnectionFactory cachingConnectionFactory =
                 (org.springframework.amqp.rabbit.connection.CachingConnectionFactory) defaultListableBeanFactory.getBean("rabbitConnectionFactory");
 
@@ -410,10 +427,6 @@ public class CommonUtils {
         Integer channelCacheSize = null;
         Integer connectionCacheSize = null;
         Integer connectionLimit = null;
-
-        if (null == distributionProp.getRabbitOtherOutputQueue() || distributionProp.getRabbitOtherOutputQueue().isEmpty()) {
-            return;
-        }
 
         for (String outQueueInfo : distributionProp.getRabbitOtherOutputQueue()) {
             queueInfos = outQueueInfo.split("\\|");
