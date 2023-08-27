@@ -1,29 +1,29 @@
 package com.github.distributionmessage.utils;
 
-import com.alibaba.fastjson.JSON;
 import com.github.distributionmessage.config.DistributionProp;
 import com.github.distributionmessage.config.IntegrationConfiguration;
 import com.github.distributionmessage.constant.ChannelConstant;
 import com.github.distributionmessage.constant.CommonConstant;
+import com.github.distributionmessage.domain.SignWrapParam;
+import com.github.distributionmessage.domain.WrapParam;
+import com.github.distributionmessage.integration.amqp.CustomAmqpHeaderMapper;
+import com.github.distributionmessage.integration.amqp.CustomJmsHeaderMapper;
+import com.github.distributionmessage.integration.file.CustomFileReadingMessageSource;
+import com.github.distributionmessage.integration.file.FileExtensionFilter;
 import com.ibm.mq.jms.MQQueueConnectionFactory;
 import com.ibm.msg.client.wmq.WMQConstants;
-import com.rabbitmq.client.Channel;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.amqp.core.AcknowledgeMode;
-import org.springframework.amqp.core.Message;
-import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
-import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.integration.amqp.inbound.AmqpInboundChannelAdapter;
 import org.springframework.integration.endpoint.SourcePollingChannelAdapter;
 import org.springframework.integration.file.FileReadingMessageSource;
-import org.springframework.integration.file.filters.SimplePatternFileListFilter;
 import org.springframework.integration.jms.ChannelPublishingJmsMessageListener;
 import org.springframework.integration.jms.JmsMessageDrivenEndpoint;
 import org.springframework.jms.connection.CachingConnectionFactory;
@@ -31,6 +31,7 @@ import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.listener.DefaultMessageListenerContainer;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.support.PeriodicTrigger;
+import org.springframework.util.CollectionUtils;
 
 import javax.jms.JMSException;
 import java.io.File;
@@ -55,7 +56,19 @@ public class CommonUtils {
 
     private static List<Integer> ccsidList = new ArrayList<>();
 
+    private static Map<Integer, WrapParam> ibmWrapParamMap = new HashMap<>();
+    private static Map<Integer, WrapParam> rabbitmqWrapParamMap = new HashMap<>();
+    private static Map<Integer, WrapParam> dirWrapParamMap = new HashMap<>();
+
+    private static Map<Integer, SignWrapParam> ibmSignWrapParamMap = new HashMap<>();
+    private static Map<Integer, SignWrapParam> rabbitmqSignWrapParamMap = new HashMap<>();
+    private static Map<Integer, SignWrapParam> dirSignWrapParamMap = new HashMap<>();
+
     private static final Log logger = LogFactory.getLog(CommonUtils.class);
+
+    private static DefaultListableBeanFactory defaultListableBeanFactory;
+
+    private static DistributionProp distributionProp;
 
     private static ApplicationContext applicationContext;
 
@@ -65,9 +78,14 @@ public class CommonUtils {
 
     public static void setApplicationContext(ApplicationContext applicationContext) {
         CommonUtils.applicationContext = applicationContext;
+        defaultListableBeanFactory = (DefaultListableBeanFactory) applicationContext.getAutowireCapableBeanFactory();
+        distributionProp = defaultListableBeanFactory.getBean(DistributionProp.class);
     }
 
     public static void initParams() {
+        initWrapParamMap();
+        initSignWrapParamMap();
+
         initJmsTemplateList();
         initRabbitTemplateList();
         try {
@@ -80,10 +98,105 @@ public class CommonUtils {
         initDirectoryInboundAdapter();
     }
 
-    private static void initOtherListenerContainer() {
-        DefaultListableBeanFactory defaultListableBeanFactory = (DefaultListableBeanFactory) applicationContext.getAutowireCapableBeanFactory();
-        DistributionProp distributionProp = defaultListableBeanFactory.getBean(DistributionProp.class);
+    public static void initWrapParamMap() {
+        if (CollectionUtils.isEmpty(distributionProp.getWrapChain())) {
+            logger.error("wrapChain error");
+            return;
+        }
 
+        String wrapChain = null;
+        String[] chainInfos = null;
+        String senderId = null;
+        String receiverId = null;
+        String type = null;
+        int index = 0;
+        WrapParam wrapParam = null;
+
+        for (int i = 0 ; i < distributionProp.getWrapChain().size(); i++) {
+            wrapChain = distributionProp.getWrapChain().get(i);
+
+            chainInfos = wrapChain.split("\\|");
+            for (int j = 0; j < chainInfos.length; j++) {
+                logger.info("chainInfos=[" + j + "]=[" + chainInfos[j] + "]");
+            }
+            if (chainInfos.length < 4) {
+                log.error(String.format("chainInfos=[%s] error!", wrapChain));
+                continue;
+            }
+
+            try {
+                senderId = chainInfos[0].trim();
+                receiverId = chainInfos[1].trim();
+                type = chainInfos[2].trim();
+                index = Integer.parseInt(chainInfos[3].trim());
+
+                wrapParam = new WrapParam(senderId, receiverId);
+
+                if ("i".equalsIgnoreCase(type)) {
+                    ibmWrapParamMap.put(index, wrapParam);
+                } else if ("r".equalsIgnoreCase(type)) {
+                    rabbitmqWrapParamMap.put(index, wrapParam);
+                } else {
+                    dirWrapParamMap.put(index, wrapParam);
+                }
+
+            } catch (Exception e) {
+                logError(logger, e);
+            }
+
+        }
+    }
+
+    public static void initSignWrapParamMap() {
+        if (CollectionUtils.isEmpty(distributionProp.getSignAndWrapChain())) {
+            logger.error("signWrapChain error");
+            return;
+        }
+
+        String signWrapChain = null;
+        String[] chainInfos = null;
+        String url = null;
+        String ieType = null;
+        String type = null;
+        int index = 0;
+        SignWrapParam signWrapParam = null;
+
+        for (int i = 0 ; i < distributionProp.getSignAndWrapChain().size(); i++) {
+            signWrapChain = distributionProp.getSignAndWrapChain().get(i);
+
+            chainInfos = signWrapChain.split("\\|");
+            for (int j = 0; j < chainInfos.length; j++) {
+                logger.info("sign and wrap chainInfos=[" + j + "]=[" + chainInfos[j] + "]");
+            }
+            if (chainInfos.length < 4) {
+                log.error(String.format("sign and wrap chainInfos=[%s] error!", signWrapChain));
+                continue;
+            }
+
+            try {
+                url = chainInfos[0].trim();
+                ieType = chainInfos[1].trim();
+                type = chainInfos[2].trim();
+                index = Integer.parseInt(chainInfos[3].trim());
+
+                signWrapParam = new SignWrapParam(url, ieType);
+
+                if ("i".equalsIgnoreCase(type)) {
+                    ibmSignWrapParamMap.put(index, signWrapParam);
+                } else if ("r".equalsIgnoreCase(type)) {
+                    rabbitmqSignWrapParamMap.put(index, signWrapParam);
+                } else {
+                    dirSignWrapParamMap.put(index, signWrapParam);
+                }
+
+            } catch (Exception e) {
+                logError(logger, e);
+            }
+
+        }
+    }
+
+    private static void initOtherListenerContainer() {
         if (null == distributionProp.getOtherInputQueue() || distributionProp.getOtherInputQueue().isEmpty()) {
             logger.error("otherInputQueue error");
             return;
@@ -112,8 +225,12 @@ public class CommonUtils {
         Integer keepAliveSeconds = null;
         Integer queueCapacity = null;
         String threadNamePrefix = null;
+        String inputQueueInfo = null;
+        String outputChannelName = null;
 
-        for (String inputQueueInfo : distributionProp.getOtherInputQueue()) {
+        for (int k = 0; k < distributionProp.getOtherInputQueue().size(); k++) {
+            inputQueueInfo = distributionProp.getOtherInputQueue().get(k);
+//        for (String inputQueueInfo : distributionProp.getOtherInputQueue()) {
             queueInfos = inputQueueInfo.split("\\|");
             for (int i = 0; i < queueInfos.length; i++) {
                 logger.info("queueInfo=[" + i + "]=[" + queueInfos[i] + "]");
@@ -180,9 +297,22 @@ public class CommonUtils {
 
                             constructorArgList.clear();
                             constructorArgList.add(new Object[] {true, listenerContainerBeanName});
+                            ChannelPublishingJmsMessageListener channelPublishingJmsMessageListener = new ChannelPublishingJmsMessageListener();
+                            if (ibmSignWrapParamMap.containsKey(k)) {
+                                SignWrapParam signWrapParam = ibmSignWrapParamMap.get(k);
+                                channelPublishingJmsMessageListener.setHeaderMapper(CustomJmsHeaderMapper.createSignAndWrapHeaderMapper(signWrapParam.getServiceUrl(), signWrapParam.getIeType()));
+                                outputChannelName = ChannelConstant.SIGN_WRAP_CHANNEL;
+                            } else if (ibmWrapParamMap.containsKey(k)) {
+                                WrapParam wrapParam = ibmWrapParamMap.get(k);
+                                channelPublishingJmsMessageListener.setHeaderMapper(CustomJmsHeaderMapper.createWrapHeaderMapper(wrapParam.getSenderId(), wrapParam.getReceiverId()));
+                                outputChannelName = ChannelConstant.WRAP_CHANNEL;
+                            } else {
+                                outputChannelName = ChannelConstant.IBMMQ_RECEIVE_CHANNEL;
+                            }
                             constructorArgList.add(new Object[] {false, new ChannelPublishingJmsMessageListener()});
                             propertyValueMap.clear();
-                            propertyValueMap.put("outputChannelName", ChannelConstant.IBMMQ_RECEIVE_CHANNEL);
+//                            propertyValueMap.put("outputChannelName", ChannelConstant.IBMMQ_RECEIVE_CHANNEL);
+                            propertyValueMap.put("outputChannelName", outputChannelName);
                             createAndregisterBean(JmsMessageDrivenEndpoint.class, jmsMessageDrivenEndpointBeanName, propertyValueMap, null, constructorArgList);
                             ((DefaultMessageListenerContainer) defaultListableBeanFactory.getBean(listenerContainerBeanName)).start();
                             ((JmsMessageDrivenEndpoint) defaultListableBeanFactory.getBean(jmsMessageDrivenEndpointBeanName)).start();
@@ -200,9 +330,6 @@ public class CommonUtils {
     }
 
     private static void initJmsTemplateList() {
-        DefaultListableBeanFactory defaultListableBeanFactory = (DefaultListableBeanFactory) applicationContext.getAutowireCapableBeanFactory();
-        DistributionProp distributionProp = defaultListableBeanFactory.getBean(DistributionProp.class);
-
         if (null == distributionProp.getOtherOutputQueue() || distributionProp.getOtherOutputQueue().isEmpty()) {
             logger.error("otherOutputQueue error");
             return;
@@ -269,8 +396,6 @@ public class CommonUtils {
     }
 
     private static void initRabbitContainer() {
-        DefaultListableBeanFactory defaultListableBeanFactory = (DefaultListableBeanFactory) applicationContext.getAutowireCapableBeanFactory();
-        DistributionProp distributionProp = defaultListableBeanFactory.getBean(DistributionProp.class);
         if (null == distributionProp.getOtherRabbitInputQueue() || distributionProp.getOtherRabbitInputQueue().isEmpty()) {
             logger.error("otherRabbitInputQueue error");
             return;
@@ -301,7 +426,11 @@ public class CommonUtils {
         Integer queueCapacity = null;
         String threadNamePrefix = null;
         String[] queueNames = null;
-        for (String inQueueInfo : distributionProp.getOtherRabbitInputQueue()) {
+        String inQueueInfo = null;
+
+        for (int k = 0; k < distributionProp.getOtherRabbitInputQueue().size(); k++) {
+            inQueueInfo = distributionProp.getOtherRabbitInputQueue().get(k);
+//        for (String inQueueInfo : distributionProp.getOtherRabbitInputQueue()) {
             queueInfos = inQueueInfo.split("\\|");
             propertyValueMap = new HashMap<>();
             propertyReferenceMap = new HashMap<>();
@@ -387,11 +516,28 @@ public class CommonUtils {
                 constructorArgList.add(new Object[] {true, rabbitMessageListenerContainerBeanName});
                 propertyValueMap.clear();
 //                propertyValueMap.put("outputChannelName", ChannelConstant.RABBIT_RECEIVE_CHANNEL);
-                propertyValueMap.put("outputChannelName", ChannelConstant.IBMMQ_RECEIVE_CHANNEL);
+//                propertyValueMap.put("outputChannelName", ChannelConstant.IBMMQ_RECEIVE_CHANNEL);
+                if (rabbitmqSignWrapParamMap.containsKey(k)) {
+                    propertyValueMap.put("outputChannelName", ChannelConstant.SIGN_WRAP_CHANNEL);
+                } else if (rabbitmqWrapParamMap.containsKey(k)) {
+                    propertyValueMap.put("outputChannelName", ChannelConstant.WRAP_CHANNEL);
+                } else {
+                    propertyValueMap.put("outputChannelName", ChannelConstant.IBMMQ_RECEIVE_CHANNEL);
+                }
                 createAndregisterBean(AmqpInboundChannelAdapter.class, rabbitAmqpInboundChannelAdapterBeanName, propertyValueMap, null, constructorArgList);
                 logger.info("init rabbit amqpInboundChannelAdapter finished.");
 
-                ((AmqpInboundChannelAdapter) defaultListableBeanFactory.getBean(rabbitAmqpInboundChannelAdapterBeanName)).start();
+                AmqpInboundChannelAdapter amqpInboundChannelAdapter = (AmqpInboundChannelAdapter) defaultListableBeanFactory.getBean(rabbitAmqpInboundChannelAdapterBeanName);
+                if (rabbitmqSignWrapParamMap.containsKey(k)) {
+                    SignWrapParam signWrapParam = rabbitmqSignWrapParamMap.get(k);
+                    amqpInboundChannelAdapter.setHeaderMapper(CustomAmqpHeaderMapper.inboundSignAndWrapMapper(signWrapParam.getServiceUrl(), signWrapParam.getIeType()));
+                } else if (rabbitmqWrapParamMap.containsKey(k)) {
+                    WrapParam wrapParam = rabbitmqWrapParamMap.get(k);
+                    amqpInboundChannelAdapter.setHeaderMapper(CustomAmqpHeaderMapper.inboundWrapMapper(wrapParam.getSenderId(), wrapParam.getReceiverId()));
+                }
+                amqpInboundChannelAdapter.start();
+
+//                ((AmqpInboundChannelAdapter) defaultListableBeanFactory.getBean(rabbitAmqpInboundChannelAdapterBeanName)).start();
                 ((SimpleMessageListenerContainer) defaultListableBeanFactory.getBean(rabbitMessageListenerContainerBeanName)).start();
             } catch (Exception e) {
                 logError(logger, e);
@@ -400,9 +546,6 @@ public class CommonUtils {
     }
 
     private static void initRabbitTemplateList() {
-        DefaultListableBeanFactory defaultListableBeanFactory = (DefaultListableBeanFactory) applicationContext.getAutowireCapableBeanFactory();
-        DistributionProp distributionProp = defaultListableBeanFactory.getBean(DistributionProp.class);
-
         if (null == distributionProp.getRabbitOtherOutputQueue() || distributionProp.getRabbitOtherOutputQueue().isEmpty()) {
             logger.error("rabbitOtherOutputQueue error");
             return;
@@ -483,8 +626,6 @@ public class CommonUtils {
     }
 
     private static void initDirectoryInboundAdapter() {
-        DefaultListableBeanFactory defaultListableBeanFactory = (DefaultListableBeanFactory) applicationContext.getAutowireCapableBeanFactory();
-        DistributionProp distributionProp = defaultListableBeanFactory.getBean(DistributionProp.class);
         if (null == distributionProp.getOtherDirectorInput() || distributionProp.getOtherDirectorInput().isEmpty()) {
             logger.error("otherDirectoryInput error");
             return;
@@ -497,7 +638,8 @@ public class CommonUtils {
         String directory = null;
         String dir = null;
         String[] directories = null;
-        String fileFilter = null;
+//        String fileFilter = null;
+        String fileExtension = null;
         Integer periodic = null;
         Integer maxMessagesPrePoll = null;
         Integer minConcurrency = null;
@@ -508,8 +650,12 @@ public class CommonUtils {
         String pollingChannelAdapterBeanName = null;
         FileReadingMessageSource fileReadingMessageSource = null;
         ThreadPoolTaskExecutor threadPoolTaskExecutor = null;
+        String inDirInfo = null;
+        String outputChannelName = null;
 
-        for (String inDirInfo : distributionProp.getOtherDirectorInput()) {
+        for (int k = 0; k < distributionProp.getOtherDirectorInput().size(); k++) {
+            inDirInfo = distributionProp.getOtherDirectorInput().get(k);
+//        for (String inDirInfo : distributionProp.getOtherDirectorInput()) {
             directoryInfos = inDirInfo.split("\\|");
             if (directoryInfos.length < 9) {
                 continue;
@@ -517,7 +663,8 @@ public class CommonUtils {
 
             propertyValueMap = new HashMap<>();
             directory = directoryInfos[0].trim();
-            fileFilter = directoryInfos[1].trim();
+//            fileFilter = directoryInfos[1].trim();
+            fileExtension = directoryInfos[1].trim();
             periodic = Integer.valueOf(directoryInfos[2].trim());
             maxMessagesPrePoll = Integer.valueOf(directoryInfos[3].trim());
             minConcurrency = Integer.valueOf(directoryInfos[4].trim());
@@ -531,9 +678,24 @@ public class CommonUtils {
                 dir = directories[i];
                 suffix = dir + "-" + i + "-";
                 pollingChannelAdapterBeanName = key + "SourcePollingChannelAdapter" + suffix;
-                fileReadingMessageSource = new FileReadingMessageSource();
+//                fileReadingMessageSource = new FileReadingMessageSource();
+                if (dirSignWrapParamMap.containsKey(k)) {
+                    SignWrapParam signWrapParam = dirSignWrapParamMap.get(k);
+                    fileReadingMessageSource = CustomFileReadingMessageSource.signAndWrapMessageSource(signWrapParam.getServiceUrl(), signWrapParam.getIeType());
+                    outputChannelName = ChannelConstant.SIGN_WRAP_CHANNEL;
+                } else if (dirWrapParamMap.containsKey(k)) {
+                    WrapParam wrapParam = dirWrapParamMap.get(k);
+                    fileReadingMessageSource = CustomFileReadingMessageSource.wrapMessageSource(wrapParam.getSenderId(), wrapParam.getReceiverId());
+                    outputChannelName = ChannelConstant.WRAP_CHANNEL;
+                } else {
+                    fileReadingMessageSource = new FileReadingMessageSource();
+                    outputChannelName = ChannelConstant.IBMMQ_RECEIVE_CHANNEL;
+                }
                 fileReadingMessageSource.setDirectory(new File(dir));
-                fileReadingMessageSource.setFilter(new SimplePatternFileListFilter(fileFilter));
+
+//                fileReadingMessageSource.setFilter(new SimplePatternFileListFilter(fileFilter));
+//                fileReadingMessageSource.setFilter(new FileExtensionFilter(fileExtension));
+                fileReadingMessageSource.getScanner().setFilter(new FileExtensionFilter(fileExtension));
                 threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
                 threadPoolTaskExecutor.initialize();
                 threadPoolTaskExecutor.setCorePoolSize(minConcurrency);
@@ -544,7 +706,8 @@ public class CommonUtils {
                 threadPoolTaskExecutor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
 
                 propertyValueMap.put("source", fileReadingMessageSource);
-                propertyValueMap.put("outputChannelName", ChannelConstant.FILE_RECEIVE_CHANNEL);
+//                propertyValueMap.put("outputChannelName", ChannelConstant.FILE_RECEIVE_CHANNEL);
+                propertyValueMap.put("outputChannelName", outputChannelName);
                 propertyValueMap.put("trigger", new PeriodicTrigger(periodic));
                 propertyValueMap.put("maxMessagesPerPoll", maxMessagesPrePoll);
                 propertyValueMap.put("taskExecutor", threadPoolTaskExecutor);
@@ -558,8 +721,6 @@ public class CommonUtils {
     public static void createAndregisterBean(Class clzz, String beanName, Map<String, Object> propertyValueMap,
                                                                   Map<String, String> propertyReferenceMap,
                                              List<Object[]> constructorArgList) {
-        DefaultListableBeanFactory defaultListableBeanFactory = (DefaultListableBeanFactory) applicationContext.getAutowireCapableBeanFactory();
-
         BeanDefinitionBuilder beanDefinitionBuilder = BeanDefinitionBuilder.genericBeanDefinition(clzz);
         if (null != propertyReferenceMap && !propertyReferenceMap.isEmpty()) {
             for (Map.Entry<String, String> entry : propertyReferenceMap.entrySet()) {
@@ -584,9 +745,7 @@ public class CommonUtils {
                 }
             }
         }
-
         defaultListableBeanFactory.registerBeanDefinition(beanName, beanDefinitionBuilder.getBeanDefinition());
-
     }
 
     public static void logError(Log log, Throwable t) {

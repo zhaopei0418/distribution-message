@@ -11,4 +11,8 @@ public interface ChannelConstant {
     String FILE_RECEIVE_CHANNEL = "fileReceiveChannel";
 
     String BYTES_RECEIVE_CHANNEL = "bytesReceiveChannel";
+
+    String WRAP_CHANNEL = "wrapChannel";
+
+    String SIGN_WRAP_CHANNEL = "wrapSignChannel";
 }

@@ -29,6 +29,10 @@ public class DistributionProp {
 
     private List<String> rabbitOtherOutputQueue;
 
+    private List<String> wrapChain;
+
+    private List<String> signAndWrapChain;
+
     private Boolean conditionMutualExclusion;
 
     private Map<String, String> dxpidDistribution;

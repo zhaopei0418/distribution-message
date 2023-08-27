@@ -7,13 +7,15 @@ import com.github.distributionmessage.handler.DistributionSendingMessageHandler;
 import com.github.distributionmessage.listener.DistributionMessageListener;
 import com.github.distributionmessage.thread.RabbitSendMessageThread;
 import com.github.distributionmessage.thread.SendMessageThread;
+import com.github.distributionmessage.transformer.SignAndWrapTransformer;
+import com.github.distributionmessage.transformer.WrapTransformer;
+import com.github.distributionmessage.utils.HttpClientUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.cglib.beans.BeanCopier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 import org.springframework.expression.Expression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.integration.annotation.MessagingGateway;
@@ -23,11 +25,6 @@ import org.springframework.integration.file.FileNameGenerator;
 import org.springframework.integration.file.FileWritingMessageHandler;
 import org.springframework.integration.file.transformer.FileToByteArrayTransformer;
 import org.springframework.integration.handler.AbstractMessageHandler;
-import org.springframework.integration.jms.ChannelPublishingJmsMessageListener;
-import org.springframework.integration.jms.JmsMessageDrivenEndpoint;
-import org.springframework.integration.jms.JmsSendingMessageHandler;
-import org.springframework.jms.core.JmsTemplate;
-import org.springframework.jms.listener.DefaultMessageListenerContainer;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
@@ -43,6 +40,9 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 
+/**
+ * @author zhaopei
+ */
 @Configuration
 public class IntegrationConfiguration {
 
@@ -56,8 +56,16 @@ public class IntegrationConfiguration {
     @Autowired
     private DistributionProp distributionProp;
 
+    @Autowired
+    private HttpClientProp httpClientProp;
+
     @PostConstruct
     public void initialization() {
+        BeanCopier beanCopier = BeanCopier.create(HttpClientProp.class, HttpClientUtils.ClientProp.class, false);
+        HttpClientUtils.ClientProp clientProp = new HttpClientUtils.ClientProp();
+        beanCopier.copy(this.httpClientProp, clientProp, null);
+        HttpClientUtils.setClientProp(clientProp);
+
         CACHE_QUEUE = new LinkedBlockingQueue<Integer>(this.distributionProp.getCacheSize());
         SendMessageThread.setExecutorService(Executors.newFixedThreadPool(this.distributionProp.getPoolSize()));
         RabbitSendMessageThread.setExecutorService(Executors.newFixedThreadPool(this.distributionProp.getPoolSize()));
@@ -80,6 +88,16 @@ public class IntegrationConfiguration {
 
     @Bean(name = ChannelConstant.BYTES_RECEIVE_CHANNEL)
     public MessageChannel bytesReceiveChannel() {
+        return new PublishSubscribeChannel();
+    }
+
+    @Bean(name = ChannelConstant.WRAP_CHANNEL)
+    public MessageChannel wrapChannel() {
+        return new PublishSubscribeChannel();
+    }
+
+    @Bean(name = ChannelConstant.SIGN_WRAP_CHANNEL)
+    public MessageChannel signWrapChannel() {
         return new PublishSubscribeChannel();
     }
 
@@ -128,6 +146,18 @@ public class IntegrationConfiguration {
         DistributionSendingMessageHandler distributionSendingMessageHandler = new DistributionSendingMessageHandler();
         distributionSendingMessageHandler.setDistributionProp(this.distributionProp);
         return distributionSendingMessageHandler;
+    }
+
+    @Bean
+    @ServiceActivator(inputChannel = ChannelConstant.WRAP_CHANNEL, outputChannel = ChannelConstant.IBMMQ_RECEIVE_CHANNEL)
+    public WrapTransformer wrapTransformer() {
+        return new WrapTransformer();
+    }
+
+    @Bean
+    @ServiceActivator(inputChannel = ChannelConstant.SIGN_WRAP_CHANNEL, outputChannel = ChannelConstant.IBMMQ_RECEIVE_CHANNEL)
+    public SignAndWrapTransformer signAndWrapTransformer() {
+        return new SignAndWrapTransformer();
     }
 
     @Bean

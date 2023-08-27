@@ -150,7 +150,7 @@
         <!--<appender-ref ref="FILEWARN"/>-->
         <appender-ref ref="FILEINFO"/>
         <!--<appender-ref ref="DBAPPENDER"/>-->
-        <!--<appender-ref ref="STDOUT"/>-->
+        <appender-ref ref="STDOUT"/>
     </root>
     <!--</springProfile>-->
 

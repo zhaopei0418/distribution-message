@@ -1,5 +1,6 @@
 package com.github.distributionmessage;
 
+import com.github.distributionmessage.utils.CipherUtils;
 import com.github.distributionmessage.utils.CommonUtils;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -15,5 +16,6 @@ public class DistributionMessageApplication {
         ApplicationContext applicationContext = SpringApplication.run(DistributionMessageApplication.class, args);
         CommonUtils.setApplicationContext(applicationContext);
         CommonUtils.initParams();
+//        CipherUtils.test();
     }
 }

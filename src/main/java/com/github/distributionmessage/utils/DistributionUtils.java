@@ -1,16 +1,23 @@
 package com.github.distributionmessage.utils;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.github.distributionmessage.config.DistributionProp;
+import com.github.distributionmessage.constant.CommonConstant;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.util.StringUtils;
 
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -227,6 +234,82 @@ public class DistributionUtils {
             return Base64.decodeBase64(matcher.group(1).getBytes(StandardCharsets.UTF_8));
         }
         return dxp.getBytes(StandardCharsets.UTF_8);
+    }
+
+    public static String wrap(String ceb, String senderId, String receiverId) {
+        if (StringUtils.isEmpty(ceb)) {
+            return null;
+        }
+
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+        stringBuffer.append("<DxpMsg xmlns=\"http://www.chinaport.gov.cn/dxp\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" ver=\"1.0\">\n");
+        stringBuffer.append("    <TransInfo>\n");
+        stringBuffer.append(String.format("        <CopMsgId>%s</CopMsgId>\n", UUID.randomUUID()));
+        stringBuffer.append(String.format("        <SenderId>%s</SenderId>\n", senderId));
+        stringBuffer.append("        <ReceiverIds>\n");
+        stringBuffer.append(String.format("            <ReceiverId>%s</ReceiverId>\n", receiverId));
+        stringBuffer.append("        </ReceiverIds>\n");
+        stringBuffer.append(String.format("        <CreatTime>%s</CreatTime>\n", CommonConstant.LOCAL_DATE_TIME.format(LocalDateTime.now())));
+        stringBuffer.append(String.format("        <MsgType>%s</MsgType>\n", getMessageTypeByCebMessage(ceb)));
+        stringBuffer.append("    </TransInfo>\n");
+        stringBuffer.append(String.format("    <Data>%s</Data>\n", Base64.encodeBase64String(ceb.getBytes(StandardCharsets.UTF_8))));
+        stringBuffer.append("</DxpMsg>");
+
+        return stringBuffer.toString();
+    }
+
+    public static String getMessageTypeByCebMessage(String message) {
+        String msgType = "UNKNOWN";
+        if (message.toLowerCase().indexOf("<ceb") != -1) {
+            if (message.indexOf("<ceb:") != -1) {
+                message = message.replaceAll("<ceb:", "<");
+            }
+
+            if (message.indexOf("<CEB") != -1) {
+                try {
+                    message = message.substring(message.indexOf("<CEB"));
+                    message = message.substring(0, message.indexOf(" "));
+                    message = message.substring(message.indexOf("<") + 1);
+                    msgType = message;
+                } catch (Exception e) {
+                    logger.error("message msgtype unknown!", e);
+                }
+            }
+        }
+
+        return msgType;
+    }
+
+    public static String signAndWrap(String url, String xml, String ieType) {
+        String result = null;
+
+        for (int i = 0; i < 3; i++) {
+            try {
+                Map<String, String> param = new HashMap<>();
+                param.put("xml", xml);
+                param.put("ieType", ieType);
+                long startTime = System.currentTimeMillis();
+                String requestResult = HttpClientUtils.post(new URI(url), null, param);
+                logger.info(String.format("request [%s] param [%s] result [%s] cost time [%d]ms.", url,
+                        JSON.toJSONString(param), requestResult, (System.currentTimeMillis() - startTime)));
+//                logger.info(String.format("request [%s] param [%s] cost time [%d]ms.", url,
+//                        JSON.toJSONString(param), (System.currentTimeMillis() - startTime)));
+                if (org.apache.commons.lang.StringUtils.isNotBlank(requestResult)) {
+                    JSONObject jsonResult =  JSON.parseObject(requestResult);
+                    if ("0".equals(jsonResult.getString("code"))) {
+                        result = jsonResult.getString("data");
+                    }
+                }
+                if (org.apache.commons.lang.StringUtils.isNotBlank(result)) {
+                    break;
+                }
+            } catch (Exception e) {
+                logger.error(String.format("request [%s] sign and wrap error!", url), e);
+            }
+        }
+
+        return result;
     }
 
     public static void main(String[] args) {
