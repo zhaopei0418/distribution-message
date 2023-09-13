@@ -57,6 +57,8 @@ httpclient:
   connectRequestTimeout: 15000
   connectTimeout: 15000
   socketTimeout: 15000
+  retryTimes: 3
+  retryInterval: 15000
 
 logging:
   config: classpath:logback-spring.xml

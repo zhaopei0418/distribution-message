@@ -23,4 +23,8 @@ public class HttpClientProp {
     private Integer connectTimeout;
 
     private Integer socketTimeout;
+
+    private Integer retryTimes;
+
+    private Integer retryInterval;
 }

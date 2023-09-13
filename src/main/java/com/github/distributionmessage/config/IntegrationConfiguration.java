@@ -9,6 +9,7 @@ import com.github.distributionmessage.thread.RabbitSendMessageThread;
 import com.github.distributionmessage.thread.SendMessageThread;
 import com.github.distributionmessage.transformer.SignAndWrapTransformer;
 import com.github.distributionmessage.transformer.WrapTransformer;
+import com.github.distributionmessage.utils.DistributionUtils;
 import com.github.distributionmessage.utils.HttpClientUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -65,6 +66,8 @@ public class IntegrationConfiguration {
         HttpClientUtils.ClientProp clientProp = new HttpClientUtils.ClientProp();
         beanCopier.copy(this.httpClientProp, clientProp, null);
         HttpClientUtils.setClientProp(clientProp);
+
+        DistributionUtils.setHttpClientProp(this.httpClientProp);
 
         CACHE_QUEUE = new LinkedBlockingQueue<Integer>(this.distributionProp.getCacheSize());
         SendMessageThread.setExecutorService(Executors.newFixedThreadPool(this.distributionProp.getPoolSize()));

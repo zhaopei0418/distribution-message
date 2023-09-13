@@ -3,6 +3,7 @@ package com.github.distributionmessage.utils;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.github.distributionmessage.config.DistributionProp;
+import com.github.distributionmessage.config.HttpClientProp;
 import com.github.distributionmessage.constant.CommonConstant;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -24,6 +25,8 @@ import java.util.regex.Pattern;
 public class DistributionUtils {
 
     private final static Log logger = LogFactory.getLog(DistributionUtils.class);
+
+    private static HttpClientProp httpClientProp;
 
     public static String getDestinationQueueName(DistributionProp distributionProp, String dxpid, String msgtype, String senderId) {
         String result = null;
@@ -223,6 +226,30 @@ public class DistributionUtils {
         return null;
     }
 
+    public static String getCopMsgId(String message) {
+        if (null == message) {
+            return null;
+        }
+        Pattern pattern = Pattern.compile("<CopMsgId>(.+)</CopMsgId>");
+        Matcher matcher = pattern.matcher(message);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
+    }
+
+    public static String getCreatTime(String message) {
+        if (null == message) {
+            return null;
+        }
+        Pattern pattern = Pattern.compile("<CreatTime>(.+)</CreatTime>");
+        Matcher matcher = pattern.matcher(message);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
+    }
+
     public static byte[] unWrap(String dxp) {
         if (null == dxp) {
             return null;
@@ -284,25 +311,37 @@ public class DistributionUtils {
     public static String signAndWrap(String url, String xml, String ieType) {
         String result = null;
 
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < httpClientProp.getRetryTimes(); i++) {
             try {
                 Map<String, String> param = new HashMap<>();
                 param.put("xml", xml);
                 param.put("ieType", ieType);
                 long startTime = System.currentTimeMillis();
                 String requestResult = HttpClientUtils.post(new URI(url), null, param);
-                logger.info(String.format("request [%s] param [%s] result [%s] cost time [%d]ms.", url,
-                        JSON.toJSONString(param), requestResult, (System.currentTimeMillis() - startTime)));
+//                logger.info(String.format("request [%s] param [%s] result [%s] cost time [%d]ms.", url,
+//                        JSON.toJSONString(param), requestResult, (System.currentTimeMillis() - startTime)));
 //                logger.info(String.format("request [%s] param [%s] cost time [%d]ms.", url,
 //                        JSON.toJSONString(param), (System.currentTimeMillis() - startTime)));
                 if (org.apache.commons.lang.StringUtils.isNotBlank(requestResult)) {
                     JSONObject jsonResult =  JSON.parseObject(requestResult);
-                    if ("0".equals(jsonResult.getString("code"))) {
-                        result = jsonResult.getString("data");
+                    String printInfo = null;
+                    if (CommonConstant.RESULT_SUCCESS.equals(jsonResult.getString(CommonConstant.RESULT_CODE))) {
+                        result = jsonResult.getString(CommonConstant.RESULT_DATA);
+                        printInfo = String.format("CopMsgId: [%s], SenderId: [%s], ReceiverId: [%s], CreatTime: [%s], MsgType: [%s]", getCopMsgId(result),
+                                getSenderIdByMessage(result), getDxpIdByMessage(result), getCreatTime(result), getMessageType(result));
+                    } else {
+                        printInfo = String.format("fail, cause:[%s]", jsonResult.getString(CommonConstant.RESULT_MESSAGE));
                     }
+                    logger.info(String.format("request [%s] param [%s] result [%s] cost time [%d]ms.", url,
+                            JSON.toJSONString(param), printInfo, (System.currentTimeMillis() - startTime)));
+                } else {
+                    logger.info(String.format("request [%s] param [%s] result is null cost time [%d]ms.", url,
+                            JSON.toJSONString(param), (System.currentTimeMillis() - startTime)));
                 }
                 if (org.apache.commons.lang.StringUtils.isNotBlank(result)) {
                     break;
+                } else {
+                    Thread.sleep(httpClientProp.getRetryInterval());
                 }
             } catch (Exception e) {
                 logger.error(String.format("request [%s] sign and wrap error!", url), e);
@@ -310,6 +349,10 @@ public class DistributionUtils {
         }
 
         return result;
+    }
+
+    public static void setHttpClientProp(HttpClientProp httpClientProp) {
+        DistributionUtils.httpClientProp = httpClientProp;
     }
 
     public static void main(String[] args) {

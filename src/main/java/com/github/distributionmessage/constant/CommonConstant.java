@@ -26,4 +26,18 @@ public interface CommonConstant {
     String RECEIVE_ID = MESSAGE_HEADER_PREFIX + "receiveId";
 
     DateTimeFormatter LOCAL_DATE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+
+    String IE_TYPE_IMPORT = "I";
+
+    String IE_TYPE_EXPORT = "E";
+
+    String RESULT_CODE = "code";
+
+    String RESULT_MESSAGE = "message";
+
+    String RESULT_DATA = "data";
+
+    String RESULT_SUCCESS = "0";
+
+    String RESULT_FAIL = "1";
 }
