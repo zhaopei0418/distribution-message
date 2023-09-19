@@ -689,7 +689,7 @@ public class CommonUtils {
                     outputChannelName = ChannelConstant.WRAP_CHANNEL;
                 } else {
                     fileReadingMessageSource = new FileReadingMessageSource();
-                    outputChannelName = ChannelConstant.IBMMQ_RECEIVE_CHANNEL;
+                    outputChannelName = ChannelConstant.FILE_RECEIVE_CHANNEL;
                 }
                 fileReadingMessageSource.setDirectory(new File(dir));
 
