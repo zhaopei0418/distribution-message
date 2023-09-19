@@ -9,23 +9,19 @@ distribution:
   otherInputQueue:
   # host|port|username|password|virtualHost|cacheMode|channelCacheSize|connectionCacheSize|connectionLimit|minConcurrency|maxConcurrency|prefetchCount|keepAliveSeconds|queueCapacity|threadNamePrefix|queues
   otherRabbitInputQueue:
-    - 39.104.185.228|5672|yuehai|rabbitmq@yuehai|bills|CONNECTION|25|16|32|4|8|1|3000|20000|yuehai-bills-|YH_TEST
   # dir|fileExtension|periodic(s)|maxMessagesPerPoll|minConcurrency|maxConcurrency|keepAliveSeconds|queueCcpacity|threadNamePrefix
   otherDirectorInput:
-    - /home/zhaopei/Desktop/share/init/send|.xml|500|100|4|8|3000|20000|share-send-
+    #- /home/zhaopei/Desktop/share/init/send|.xml|500|100|4|8|3000|20000|share-send-
   # 打包链配置, 发送者id|接收者id|类型(i=ibm输入通道; r=rabbitmq输入通道; d=dir输入通道;)|相对应输入通道的索引 如:  senderId|receiverId|type|index
   wrapChain:
-    - DXPENT0000624092|DXPEDCCEB0000003|d|0
   # 签名打包链配置, 签名服务地址|进出口类型(I:进口, E:出口)|通道类(i=ibm输入通道; r=rabbitmq输入通道; d=dir输入通道;)|相对应输入通道的索引 型
   # 优先签名打包链，如果打包链也相应配置
   # 如: http://127.0.0.1:52221/signservice/sign/signAndWrap|E|r|0
   signAndWrapChain:
-    - http://39.104.185.228:8888/signservice/sign/signAndWrap|E|d|0
   # hostName|port|queueManager|channel|ccsid|sessionCacheSize
   otherOutputQueue:
   # host|port|username|password|virtualHost|cacheModel|channelCacheSize|connectionCacheSize|connectionLimit
   rabbitOtherOutputQueue:
-    - 39.104.185.228|5672|yuehai|rabbitmq@yuehai|bills|CONNECTION|25|16|32
   conditionMutualExclusion: true
   # 优先级第一 map key:dxpid, value: 队列名称 如: {DXPENT0000011951: DXP_11951_ENT},
   # 加"|数字" 是 otherOutputQueue 中的索引, 加"||数字"是 rabbitOtherOutputQueue中的索引,rabbitOtherOutputQueue为第一个,
