@@ -10,7 +10,11 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.util.StringUtils;
+import org.w3c.dom.Document;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -223,6 +227,11 @@ public class DistributionUtils {
         if (matcher.find()) {
             return matcher.group(1);
         }
+
+        Document document = stringTransformDocument(message);
+        if (null != document) {
+            return document.getDocumentElement().getTagName();
+        }
         return null;
     }
 
@@ -248,6 +257,21 @@ public class DistributionUtils {
             return matcher.group(1);
         }
         return null;
+    }
+
+    public static Document stringTransformDocument(String data) {
+        if (StringUtils.isEmpty(data)) {
+            return null;
+        }
+        Document document = null;
+        try {
+            DocumentBuilder documentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+            document = documentBuilder.parse(new ByteArrayInputStream(data.getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception e) {
+            logger.error("string transform document error!", e);
+        }
+
+        return document;
     }
 
     public static byte[] unWrap(String dxp) {
@@ -322,9 +346,9 @@ public class DistributionUtils {
 //                        JSON.toJSONString(param), requestResult, (System.currentTimeMillis() - startTime)));
 //                logger.info(String.format("request [%s] param [%s] cost time [%d]ms.", url,
 //                        JSON.toJSONString(param), (System.currentTimeMillis() - startTime)));
+                String printInfo = null;
                 if (org.apache.commons.lang.StringUtils.isNotBlank(requestResult)) {
                     JSONObject jsonResult =  JSON.parseObject(requestResult);
-                    String printInfo = null;
                     if (CommonConstant.RESULT_SUCCESS.equals(jsonResult.getString(CommonConstant.RESULT_CODE))) {
                         result = jsonResult.getString(CommonConstant.RESULT_DATA);
                         printInfo = String.format("CopMsgId: [%s], SenderId: [%s], ReceiverId: [%s], CreatTime: [%s], MsgType: [%s]", getCopMsgId(result),
@@ -332,12 +356,9 @@ public class DistributionUtils {
                     } else {
                         printInfo = String.format("fail, cause:[%s]", jsonResult.getString(CommonConstant.RESULT_MESSAGE));
                     }
-                    logger.info(String.format("request [%s] param [%s] result [%s] cost time [%d]ms.", url,
-                            JSON.toJSONString(param), printInfo, (System.currentTimeMillis() - startTime)));
-                } else {
-                    logger.info(String.format("request [%s] param [%s] result is null cost time [%d]ms.", url,
-                            JSON.toJSONString(param), (System.currentTimeMillis() - startTime)));
                 }
+                logger.info(String.format("request [%s] param {ieType: [%s], MsgType: [%s]} result [%s] cost time [%d]ms.", url,
+                        ieType, getMessageType(xml), printInfo, (System.currentTimeMillis() - startTime)));
                 if (org.apache.commons.lang.StringUtils.isNotBlank(result)) {
                     break;
                 } else {

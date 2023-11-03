@@ -11,6 +11,7 @@ import com.github.distributionmessage.transformer.SignAndWrapTransformer;
 import com.github.distributionmessage.transformer.WrapTransformer;
 import com.github.distributionmessage.utils.DistributionUtils;
 import com.github.distributionmessage.utils.HttpClientUtils;
+import com.github.distributionmessage.utils.MessageUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,9 +38,12 @@ import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author zhaopei
@@ -48,6 +52,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class IntegrationConfiguration {
 
     public static BlockingQueue<Integer> CACHE_QUEUE;
+
+    public static Map<String, AtomicInteger> RESET_MAP;
 
     private static final Log logger = LogFactory.getLog(IntegrationConfiguration.class);
 
@@ -70,8 +76,12 @@ public class IntegrationConfiguration {
         DistributionUtils.setHttpClientProp(this.httpClientProp);
 
         CACHE_QUEUE = new LinkedBlockingQueue<Integer>(this.distributionProp.getCacheSize());
+        RESET_MAP = new ConcurrentHashMap<>();
         SendMessageThread.setExecutorService(Executors.newFixedThreadPool(this.distributionProp.getPoolSize()));
         RabbitSendMessageThread.setExecutorService(Executors.newFixedThreadPool(this.distributionProp.getPoolSize()));
+
+        MessageUtils.setHttpClientProp(this.httpClientProp);
+        MessageUtils.setMessageChannel(signWrapChannel());
     }
 
     @Bean(name = ChannelConstant.IBMMQ_RECEIVE_CHANNEL)

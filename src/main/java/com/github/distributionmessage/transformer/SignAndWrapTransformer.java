@@ -2,6 +2,7 @@ package com.github.distributionmessage.transformer;
 
 import com.github.distributionmessage.constant.CommonConstant;
 import com.github.distributionmessage.utils.DistributionUtils;
+import com.github.distributionmessage.utils.MessageUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.integration.file.transformer.FileToStringTransformer;
@@ -45,7 +46,10 @@ public class SignAndWrapTransformer implements Transformer {
 
             String result = DistributionUtils.signAndWrap(serviceUrl, strPayload, ieType);
             if (StringUtils.isBlank(result)) {
+                MessageUtils.resendSignMessage(message);
                 throw new MessagingException(message, "sign and wrap fail!");
+            } else {
+                MessageUtils.removeResendSignKey(strPayload.getBytes(StandardCharsets.UTF_8));
             }
 
             Message<?> transformedMessage = new DefaultMessageBuilderFactory().withPayload(result.getBytes(StandardCharsets.UTF_8))
