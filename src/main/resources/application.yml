@@ -40,6 +40,7 @@ distribution:
   # 所有没有区配到，就转发到默认队列
   # 加"|数字" 是 otherOutputQueue 中的索引, 加"||数字"是 rabbitOtherOutputQueue中的索引,rabbitOtherOutputQueue为第一个,
   # 加|||则前面为输入目录名,直接把数据写入到相应目录
+  # 逗号分隔队列，随机分配，&号分隔，全部队列发送如"YH_DEAD||0,YH_DEAD|0" 随机取其中一个来分送, "YH_DEAD||0&YH_DEAD|0" 两个队列都发送
   defaultQueue: "YH_DEAD||0"
   filePrefix: FILE_RECEIVE_
   fileSuffix: .xml

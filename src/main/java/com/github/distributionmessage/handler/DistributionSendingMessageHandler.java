@@ -71,39 +71,48 @@ public class DistributionSendingMessageHandler extends AbstractMessageHandler {
                 String dxpid = DistributionUtils.getDxpIdByMessage(sm);
                 String senderId = DistributionUtils.getSenderIdByMessage(sm);
                 String msgtype = DistributionUtils.getMessageType(sm);
-                String queueName = DistributionUtils.getDestinationQueueName(this.distributionProp, dxpid, msgtype, senderId);
-                logger.info("search queueName is [" + queueName + "]");
-                if (queueName.indexOf("|||") != -1) {
-                    String dir = queueName.replaceAll("\\|\\|\\|", "");
-                    if (this.distributionProp.getUnWrap()) {
-                        playload = DistributionUtils.unWrap(sm);
-                    }
-                    distributionMessageGateway.writeToFile(new File(dir), playload);
-                    logger.info("senderId=[" + senderId + "] dxpId=[" + dxpid + "] messageType=[" + msgtype + "] write to dir=[" + dir + "] use["
-                            + ((double) (System.nanoTime() - startTime) / 1000000.0) + "]ms");
-                    return;
-                } else if (queueName.indexOf("||") != -1) {
-                    String[] queueNameAndIndex = queueName.split("\\|\\|");
-                    queueName = queueNameAndIndex[0];
-                    userRabbitmqTemplate = CommonUtils.getRabbitTelmpateByIndex(Integer.valueOf(queueNameAndIndex[1]));
-                } else if (queueName.indexOf("|") != -1) {
-                    String[] queueNameAndIndex = queueName.split("\\|");
-                    queueName = queueNameAndIndex[0];
-                    useJmsTemplate = CommonUtils.getJmsTemplateByIndex(Integer.valueOf(queueNameAndIndex[1]));
-                    useCcsid = CommonUtils.getCcsidByIndex(Integer.valueOf(queueNameAndIndex[1]));
+                String originQueueName = DistributionUtils.getDestinationQueueName(this.distributionProp, dxpid, msgtype, senderId);
+                String[] queueNames = null;
+                logger.info("search queueName is [" + originQueueName + "]");
+                if (originQueueName.indexOf("&") != -1) {
+                    queueNames = originQueueName.split("&");
                 } else {
-                    logger.error("无法找到对应的输出,消息无法处理!!!");
-                    return;
+                    queueNames = new String[] {originQueueName};
                 }
-                queue.setCCSID(useCcsid);
-                queue.setBaseQueueName(queueName);
-                IntegrationConfiguration.CACHE_QUEUE.put(1);
-                SendMessageThread.getExecutorService().execute(
-                        null != useJmsTemplate ? new SendMessageThread(useJmsTemplate, playload, queue, messagePostProcessor)
-                                : new RabbitSendMessageThread(userRabbitmqTemplate, sm, queueName));
-                logger.info("cache size [" + IntegrationConfiguration.CACHE_QUEUE.size() + "] senderId=[" + senderId + "] dxpId=[" + dxpid + "] messageType=["
-                        + msgtype + "] ccsid=[" + useCcsid + "] distributionQueue=[" + queueName + "] use["
-                        + ((double) (System.nanoTime() - startTime) / 1000000.0) + "]ms");
+
+                for (String queueName : queueNames) {
+                    if (queueName.indexOf("|||") != -1) {
+                        String dir = queueName.replaceAll("\\|\\|\\|", "");
+                        if (this.distributionProp.getUnWrap()) {
+                            playload = DistributionUtils.unWrap(sm);
+                        }
+                        distributionMessageGateway.writeToFile(new File(dir), playload);
+                        logger.info("senderId=[" + senderId + "] dxpId=[" + dxpid + "] messageType=[" + msgtype + "] write to dir=[" + dir + "] use["
+                                + ((double) (System.nanoTime() - startTime) / 1000000.0) + "]ms");
+                        continue;
+                    } else if (queueName.indexOf("||") != -1) {
+                        String[] queueNameAndIndex = queueName.split("\\|\\|");
+                        queueName = queueNameAndIndex[0];
+                        userRabbitmqTemplate = CommonUtils.getRabbitTelmpateByIndex(Integer.valueOf(queueNameAndIndex[1]));
+                    } else if (queueName.indexOf("|") != -1) {
+                        String[] queueNameAndIndex = queueName.split("\\|");
+                        queueName = queueNameAndIndex[0];
+                        useJmsTemplate = CommonUtils.getJmsTemplateByIndex(Integer.valueOf(queueNameAndIndex[1]));
+                        useCcsid = CommonUtils.getCcsidByIndex(Integer.valueOf(queueNameAndIndex[1]));
+                    } else {
+                        logger.error("无法找到对应的输出,消息无法处理!!!");
+                        continue;
+                    }
+                    queue.setCCSID(useCcsid);
+                    queue.setBaseQueueName(queueName);
+                    IntegrationConfiguration.CACHE_QUEUE.put(1);
+                    SendMessageThread.getExecutorService().execute(
+                            null != useJmsTemplate ? new SendMessageThread(useJmsTemplate, playload, queue, messagePostProcessor)
+                                    : new RabbitSendMessageThread(userRabbitmqTemplate, sm, queueName));
+                    logger.info("cache size [" + IntegrationConfiguration.CACHE_QUEUE.size() + "] senderId=[" + senderId + "] dxpId=[" + dxpid + "] messageType=["
+                            + msgtype + "] ccsid=[" + useCcsid + "] distributionQueue=[" + queueName + "] use["
+                            + ((double) (System.nanoTime() - startTime) / 1000000.0) + "]ms");
+                }
             } catch (Exception e) {
                 CommonUtils.logError(logger, e);
             }
