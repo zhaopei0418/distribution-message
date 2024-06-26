@@ -25,6 +25,8 @@ public interface CommonConstant {
 
     String RECEIVE_ID = MESSAGE_HEADER_PREFIX + "receiveId";
 
+    String HEADER_FILE_NAME = "file_name";
+
     DateTimeFormatter LOCAL_DATE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
     String IE_TYPE_IMPORT = "I";

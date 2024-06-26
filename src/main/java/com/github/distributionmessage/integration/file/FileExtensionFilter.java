@@ -22,7 +22,7 @@ public class FileExtensionFilter extends AbstractFileListFilter<File> {
 
     @Override
     public boolean accept(File file) {
-        return null != file && StringUtils.endsWithIgnoreCase(file.getName(), this.extension);
+        return null != file && file.exists() && StringUtils.endsWithIgnoreCase(file.getName(), this.extension);
     }
 
 }

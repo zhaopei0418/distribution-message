@@ -287,8 +287,8 @@ public class DistributionUtils {
         return dxp.getBytes(StandardCharsets.UTF_8);
     }
 
-    public static String wrap(String ceb, String senderId, String receiverId) {
-        if (StringUtils.isEmpty(ceb)) {
+    public static String wrap(byte[] data, String senderId, String receiverId) {
+        if (null == data || data.length == 0) {
             return null;
         }
 
@@ -302,12 +302,20 @@ public class DistributionUtils {
         stringBuffer.append(String.format("            <ReceiverId>%s</ReceiverId>\n", receiverId));
         stringBuffer.append("        </ReceiverIds>\n");
         stringBuffer.append(String.format("        <CreatTime>%s</CreatTime>\n", CommonConstant.LOCAL_DATE_TIME.format(LocalDateTime.now())));
-        stringBuffer.append(String.format("        <MsgType>%s</MsgType>\n", getMessageTypeByCebMessage(ceb)));
+        stringBuffer.append(String.format("        <MsgType>%s</MsgType>\n", getMessageTypeByCebMessage(new String(data, StandardCharsets.UTF_8))));
         stringBuffer.append("    </TransInfo>\n");
-        stringBuffer.append(String.format("    <Data>%s</Data>\n", Base64.encodeBase64String(ceb.getBytes(StandardCharsets.UTF_8))));
+        stringBuffer.append(String.format("    <Data>%s</Data>\n", Base64.encodeBase64String(data)));
         stringBuffer.append("</DxpMsg>");
 
         return stringBuffer.toString();
+    }
+
+    public static String wrap(String ceb, String senderId, String receiverId) {
+        if (StringUtils.isEmpty(ceb)) {
+            return null;
+        }
+
+        return wrap(ceb.getBytes(StandardCharsets.UTF_8), senderId, receiverId);
     }
 
     public static String getMessageTypeByCebMessage(String message) {
