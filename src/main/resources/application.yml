@@ -11,9 +11,10 @@ distribution:
   otherRabbitInputQueue:
   # dir|fileExtension|periodic(s)|maxMessagesPerPoll|minConcurrency|maxConcurrency|keepAliveSeconds|queueCcpacity|threadNamePrefix
   otherDirectorInput:
-    #- /home/zhaopei/Desktop/share/init/send|.xml|500|100|4|8|3000|20000|share-send-
+    #- /home/zhaopei/Desktop/share/init/send|.xml|20000|2|4|8|3000|2000|share-send-
   # 打包链配置, 发送者id|接收者id|类型(i=ibm输入通道; r=rabbitmq输入通道; d=dir输入通道;)|相对应输入通道的索引 如:  senderId|receiverId|type|index
   wrapChain:
+    #- EcssEnt_tgfz|ecssentInvt|d|0
   # 签名打包链配置, 签名服务地址|进出口类型(I:进口, E:出口)|通道类(i=ibm输入通道; r=rabbitmq输入通道; d=dir输入通道;)|相对应输入通道的索引 型
   # 优先签名打包链，如果打包链也相应配置
   # 如: http://127.0.0.1:52221/signservice/sign/signAndWrap|E|r|0
@@ -42,6 +43,7 @@ distribution:
   # 加|||则前面为输入目录名,直接把数据写入到相应目录
   # 逗号分隔队列，随机分配，&号分隔，全部队列发送如"YH_DEAD||0,YH_DEAD|0" 随机取其中一个来分送, "YH_DEAD||0&YH_DEAD|0" 两个队列都发送
   defaultQueue: "YH_DEAD||0"
+  #defaultQueue: "/home/zhaopei/Desktop/share/init/send1|||"
   filePrefix: FILE_RECEIVE_
   fileSuffix: .xml
   # 存文件的时候是否解dxp封装

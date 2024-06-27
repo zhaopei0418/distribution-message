@@ -695,7 +695,7 @@ public class CommonUtils {
 
 //                fileReadingMessageSource.setFilter(new SimplePatternFileListFilter(fileFilter));
 //                fileReadingMessageSource.setFilter(new FileExtensionFilter(fileExtension));
-                fileReadingMessageSource.getScanner().setFilter(new FileExtensionFilter(fileExtension));
+                fileReadingMessageSource.getScanner().setFilter(new FileExtensionFilter(fileExtension, maxMessagesPrePoll));
                 threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
                 threadPoolTaskExecutor.initialize();
                 threadPoolTaskExecutor.setCorePoolSize(minConcurrency);

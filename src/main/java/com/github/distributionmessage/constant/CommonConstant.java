@@ -27,6 +27,8 @@ public interface CommonConstant {
 
     String HEADER_FILE_NAME = "file_name";
 
+    String READ_FILE_SUFFIX = ".reading";
+
     DateTimeFormatter LOCAL_DATE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
     String IE_TYPE_IMPORT = "I";

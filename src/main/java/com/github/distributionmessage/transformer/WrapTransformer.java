@@ -41,7 +41,7 @@ public class WrapTransformer implements Transformer {
                 String fileName = messageHeaders.get(CommonConstant.HEADER_FILE_NAME, String.class);
                 if (pl.exists()) {
                     result = DistributionUtils.wrap(FileUtils.readFileToByteArray(pl), senderId, receiveId);
-                    if (pl.delete()) {
+                    if (!pl.delete()) {
                         log.error("file [{}] delete fail.", fileName);
                     }
                 } else {

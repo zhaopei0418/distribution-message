@@ -1,6 +1,5 @@
 package com.github.distributionmessage.handler;
 
-import com.alibaba.fastjson.JSON;
 import com.github.distributionmessage.config.DistributionProp;
 import com.github.distributionmessage.config.IntegrationConfiguration;
 import com.github.distributionmessage.constant.CommonConstant;
