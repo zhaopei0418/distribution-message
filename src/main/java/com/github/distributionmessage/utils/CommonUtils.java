@@ -10,11 +10,17 @@ import com.github.distributionmessage.integration.amqp.CustomAmqpHeaderMapper;
 import com.github.distributionmessage.integration.amqp.CustomJmsHeaderMapper;
 import com.github.distributionmessage.integration.file.CustomFileReadingMessageSource;
 import com.github.distributionmessage.integration.file.FileExtensionFilter;
+import com.github.distributionmessage.thrift.SignService;
+import com.github.distributionmessage.thrift.factory.TSignClientFactory;
+import com.github.distributionmessage.thrift.factory.TSocketPoolFactory;
 import com.ibm.mq.jms.MQQueueConnectionFactory;
 import com.ibm.msg.client.wmq.WMQConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.commons.pool2.impl.GenericObjectPool;
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
+import org.apache.thrift.transport.TSocket;
 import org.springframework.amqp.core.AcknowledgeMode;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
@@ -41,6 +47,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadPoolExecutor;
 
 /**
@@ -64,6 +71,12 @@ public class CommonUtils {
     private static Map<Integer, SignWrapParam> rabbitmqSignWrapParamMap = new HashMap<>();
     private static Map<Integer, SignWrapParam> dirSignWrapParamMap = new HashMap<>();
 
+    private static Map<String, GenericObjectPool<TSocket>> thriftSocketPoolMap = new ConcurrentHashMap<>();
+    private static Map<String, GenericObjectPool<SignService.Client>> thriftSignClientPoolMap = new ConcurrentHashMap<>();
+    private static Map<Integer, SignWrapParam> thriftIbmSignWrapParamMap = new HashMap<>();
+    private static Map<Integer, SignWrapParam> thriftRabbitmqSignWrapParamMap = new HashMap<>();
+    private static Map<Integer, SignWrapParam> thriftDirSignWrapParamMap = new HashMap<>();
+
     private static final Log logger = LogFactory.getLog(CommonUtils.class);
 
     private static DefaultListableBeanFactory defaultListableBeanFactory;
@@ -85,6 +98,7 @@ public class CommonUtils {
     public static void initParams() {
         initWrapParamMap();
         initSignWrapParamMap();
+        initThriftSignWrapParamMap();
 
         initJmsTemplateList();
         initRabbitTemplateList();
@@ -96,7 +110,19 @@ public class CommonUtils {
         initOtherListenerContainer();
         initRabbitContainer();
         initDirectoryInboundAdapter();
+
     }
+
+//    public static void main(String[] args) throws Exception {
+//        TTransport transport = new TSocket("localhost", 9090);
+//        TFramedTransport framedTransport = new TFramedTransport(transport);
+//        SignService.Client client = new SignService.Client(new TBinaryProtocol(framedTransport));
+//        transport.open();
+//        log.info("connect opened...");
+//        String result = client.signAndWrap("111", "E");
+//        log.info("result=[{}]", result);
+//        transport.close();
+//    }
 
     public static void initWrapParamMap() {
         if (CollectionUtils.isEmpty(distributionProp.getWrapChain())) {
@@ -145,6 +171,101 @@ public class CommonUtils {
             }
 
         }
+    }
+
+    private static void initThriftSignWrapParamMap() {
+        if (CollectionUtils.isEmpty(distributionProp.getThriftSignAndWrapChain())) {
+            logger.error("thriftWrapChain error");
+            return;
+        }
+
+        String chain = null;
+        String[] chainInfos = null;
+        String ip = null;
+        int port = 0;
+        int timeout = 0;
+        int minIdle = 0;
+        int maxIdle = 0;
+        int maxTotal = 0;
+        String ieType = null;
+        String type = null;
+        int index = 0;
+
+        String key = null;
+        SignWrapParam signWrapParam = null;
+
+        TSocketPoolFactory socketPoolFactory = null;
+        GenericObjectPoolConfig<TSocket> objectPoolConfig = null;
+        GenericObjectPool<TSocket> socketPool = null;
+
+        TSignClientFactory signClientFactory = null;
+        GenericObjectPoolConfig<SignService.Client> signClientPoolConfig = null;
+        GenericObjectPool<SignService.Client> signClientPool = null;
+
+        for (int i = 0 ; i < distributionProp.getThriftSignAndWrapChain().size(); i++) {
+            chain = distributionProp.getThriftSignAndWrapChain().get(i);
+
+            chainInfos = chain.split("\\|");
+            for (int j = 0; j < chainInfos.length; j++) {
+                logger.info("thrift sign and wrap chainInfos=[" + j + "]=[" + chainInfos[j] + "]");
+            }
+            if (chainInfos.length < 9) {
+                log.error(String.format("thrift sign and wrap chainInfos=[%s] error!", chain));
+                continue;
+            }
+
+            try {
+                ip = chainInfos[0].trim();
+                port = Integer.parseInt(chainInfos[1].trim());
+                timeout = Integer.parseInt(chainInfos[2].trim());
+                minIdle = Integer.parseInt(chainInfos[3].trim());
+                maxIdle = Integer.parseInt(chainInfos[4].trim());
+                maxTotal = Integer.parseInt(chainInfos[5].trim());
+                ieType = chainInfos[6].trim();
+                type = chainInfos[7].trim();
+                index = Integer.parseInt(chainInfos[8].trim());
+
+                key = String.format("%s-%d-%s", ip, port, ieType);
+                signWrapParam = new SignWrapParam(key, ieType);
+
+                if ("i".equalsIgnoreCase(type)) {
+                    thriftIbmSignWrapParamMap.put(index, signWrapParam);
+                } else if ("r".equalsIgnoreCase(type)) {
+                    thriftRabbitmqSignWrapParamMap.put(index, signWrapParam);
+                } else {
+                    thriftDirSignWrapParamMap.put(index, signWrapParam);
+                }
+
+                if (!thriftSocketPoolMap.containsKey(key)) {
+                    socketPoolFactory = new TSocketPoolFactory(ip, port, timeout);
+
+                    objectPoolConfig = new GenericObjectPoolConfig<>();
+                    objectPoolConfig.setMinIdle(minIdle);
+                    objectPoolConfig.setMaxIdle(maxIdle);
+                    objectPoolConfig.setMaxTotal(maxTotal);
+
+                    socketPool = new GenericObjectPool<>(socketPoolFactory, objectPoolConfig);
+                    thriftSocketPoolMap.put(key, socketPool);
+                }
+
+                if (!thriftSignClientPoolMap.containsKey(key)) {
+                    signClientFactory = new TSignClientFactory(ip, port, timeout);
+
+                    signClientPoolConfig = new GenericObjectPoolConfig<>();
+                    signClientPoolConfig.setMinIdle(minIdle);
+                    signClientPoolConfig.setMaxIdle(maxIdle);
+                    signClientPoolConfig.setMaxTotal(maxTotal);
+
+                    signClientPool = new GenericObjectPool<>(signClientFactory, signClientPoolConfig);
+                    thriftSignClientPoolMap.put(key, signClientPool);
+                }
+
+            } catch (Exception e) {
+                logError(logger, e);
+            }
+
+        }
+
     }
 
     public static void initSignWrapParamMap() {
@@ -306,6 +427,10 @@ public class CommonUtils {
                                 WrapParam wrapParam = ibmWrapParamMap.get(k);
                                 channelPublishingJmsMessageListener.setHeaderMapper(CustomJmsHeaderMapper.createWrapHeaderMapper(wrapParam.getSenderId(), wrapParam.getReceiverId()));
                                 outputChannelName = ChannelConstant.WRAP_CHANNEL;
+                            } else if (thriftIbmSignWrapParamMap.containsKey(k)) {
+                                SignWrapParam signWrapParam = thriftIbmSignWrapParamMap.get(k);
+                                channelPublishingJmsMessageListener.setHeaderMapper(CustomJmsHeaderMapper.createSignAndWrapHeaderMapper(signWrapParam.getServiceUrl(), signWrapParam.getIeType()));
+                                outputChannelName = ChannelConstant.THRIFT_SIGN_WRAP_CHANNEL;
                             } else {
                                 outputChannelName = ChannelConstant.IBMMQ_RECEIVE_CHANNEL;
                             }
@@ -521,6 +646,8 @@ public class CommonUtils {
                     propertyValueMap.put("outputChannelName", ChannelConstant.SIGN_WRAP_CHANNEL);
                 } else if (rabbitmqWrapParamMap.containsKey(k)) {
                     propertyValueMap.put("outputChannelName", ChannelConstant.WRAP_CHANNEL);
+                } else if (thriftRabbitmqSignWrapParamMap.containsKey(k)) {
+                    propertyValueMap.put("outputChannelName", ChannelConstant.THRIFT_SIGN_WRAP_CHANNEL);
                 } else {
                     propertyValueMap.put("outputChannelName", ChannelConstant.IBMMQ_RECEIVE_CHANNEL);
                 }
@@ -534,6 +661,9 @@ public class CommonUtils {
                 } else if (rabbitmqWrapParamMap.containsKey(k)) {
                     WrapParam wrapParam = rabbitmqWrapParamMap.get(k);
                     amqpInboundChannelAdapter.setHeaderMapper(CustomAmqpHeaderMapper.inboundWrapMapper(wrapParam.getSenderId(), wrapParam.getReceiverId()));
+                } else if (thriftRabbitmqSignWrapParamMap.containsKey(k)) {
+                    SignWrapParam signWrapParam = thriftRabbitmqSignWrapParamMap.get(k);
+                    amqpInboundChannelAdapter.setHeaderMapper(CustomAmqpHeaderMapper.inboundSignAndWrapMapper(signWrapParam.getServiceUrl(), signWrapParam.getIeType()));
                 }
                 amqpInboundChannelAdapter.start();
 
@@ -687,6 +817,10 @@ public class CommonUtils {
                     WrapParam wrapParam = dirWrapParamMap.get(k);
                     fileReadingMessageSource = CustomFileReadingMessageSource.wrapMessageSource(wrapParam.getSenderId(), wrapParam.getReceiverId());
                     outputChannelName = ChannelConstant.WRAP_CHANNEL;
+                } else if (thriftDirSignWrapParamMap.containsKey(k)) {
+                    SignWrapParam signWrapParam = thriftDirSignWrapParamMap.get(k);
+                    fileReadingMessageSource = CustomFileReadingMessageSource.signAndWrapMessageSource(signWrapParam.getServiceUrl(), signWrapParam.getIeType());
+                    outputChannelName = ChannelConstant.THRIFT_SIGN_WRAP_CHANNEL;
                 } else {
                     fileReadingMessageSource = new FileReadingMessageSource();
                     outputChannelName = ChannelConstant.FILE_RECEIVE_CHANNEL;
@@ -777,5 +911,13 @@ public class CommonUtils {
 
     public static IntegrationConfiguration.DistributionMessageGateway getDistributionMessageGateway() {
         return applicationContext.getBean(IntegrationConfiguration.DistributionMessageGateway.class);
+    }
+
+    public static GenericObjectPool<TSocket> getGenericObjectPool(String key) {
+        return thriftSocketPoolMap.get(key);
+    }
+
+    public static GenericObjectPool<SignService.Client> getSignClientPool(String key) {
+        return thriftSignClientPoolMap.get(key);
     }
 }

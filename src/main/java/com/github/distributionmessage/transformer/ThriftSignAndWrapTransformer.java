@@ -20,7 +20,7 @@ import java.nio.charset.StandardCharsets;
  * @author zhaopei
  */
 @Slf4j
-public class SignAndWrapTransformer implements Transformer {
+public class ThriftSignAndWrapTransformer implements Transformer {
 
     @Override
     public Message<?> transform(Message<?> message) {
@@ -41,17 +41,10 @@ public class SignAndWrapTransformer implements Transformer {
                 strPayload = (String) payload;
             }
             MessageHeaders messageHeaders = message.getHeaders();
-            String serviceUrl = messageHeaders.get(CommonConstant.SIGN_AND_WRAP_SERVICE_URL, String.class);
+            String key = messageHeaders.get(CommonConstant.SIGN_AND_WRAP_SERVICE_URL, String.class);
             String ieType = messageHeaders.get(CommonConstant.SIGN_AND_WRAP_IE_TYPE, String.class);
 
-            String result = DistributionUtils.signAndWrap(serviceUrl, strPayload, ieType);
-
-//            if (StringUtils.isBlank(result)) {
-//                MessageUtils.resendSignMessage(message);
-//                throw new MessagingException(message, "sign and wrap fail!");
-//            } else {
-//                MessageUtils.removeResendSignKey(strPayload.getBytes(StandardCharsets.UTF_8));
-//            }
+            String result = DistributionUtils.thriftSignAndWrap(key, strPayload, ieType);
 
             Message<?> transformedMessage = new DefaultMessageBuilderFactory().withPayload(result.getBytes(StandardCharsets.UTF_8))
                     .copyHeaders(message.getHeaders())

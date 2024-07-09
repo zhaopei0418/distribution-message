@@ -37,7 +37,7 @@ public class FileExtensionFilter implements FileListFilter<File> {
             FileUtils.moveFile(file, dest);
             return dest;
         } catch (Exception e) {
-            log.error("reading file error", e);
+            log.info("reading file error cause:[{}]", e.getMessage());
             return null;
         }
     }

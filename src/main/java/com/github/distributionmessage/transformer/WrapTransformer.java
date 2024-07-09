@@ -42,7 +42,7 @@ public class WrapTransformer implements Transformer {
                 if (pl.exists()) {
                     result = DistributionUtils.wrap(FileUtils.readFileToByteArray(pl), senderId, receiveId);
                     if (!pl.delete()) {
-                        log.error("file [{}] delete fail.", fileName);
+                        log.info("file [{}] delete fail.", fileName);
                     }
                 } else {
                     log.info("file [{}] message not exists. not handler.", fileName);

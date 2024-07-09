@@ -14,5 +14,7 @@ public interface ChannelConstant {
 
     String WRAP_CHANNEL = "wrapChannel";
 
-    String SIGN_WRAP_CHANNEL = "wrapSignChannel";
+    String SIGN_WRAP_CHANNEL = "signWrapChannel";
+
+    String THRIFT_SIGN_WRAP_CHANNEL = "thriftSignWrapChannel";
 }

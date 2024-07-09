@@ -5,10 +5,11 @@ import com.alibaba.fastjson.JSONObject;
 import com.github.distributionmessage.config.DistributionProp;
 import com.github.distributionmessage.config.HttpClientProp;
 import com.github.distributionmessage.constant.CommonConstant;
+import com.github.distributionmessage.thrift.SignService;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.springframework.util.StringUtils;
 import org.w3c.dom.Document;
 
@@ -18,8 +19,6 @@ import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -374,6 +373,36 @@ public class DistributionUtils {
                 }
             } catch (Exception e) {
                 logger.error(String.format("request [%s] sign and wrap error!", url), e);
+            }
+        }
+
+        return result;
+    }
+
+    public static String thriftSignAndWrap(String key, String playload, String ieType) {
+        GenericObjectPool<SignService.Client> signClientPool = CommonUtils.getSignClientPool(key);
+        if (null == signClientPool) {
+            return null;
+        }
+        SignService.Client client = null;
+        String result = null;
+        for (int i = 0; i < httpClientProp.getRetryTimes(); i++) {
+            try {
+                client = signClientPool.borrowObject();
+
+                result =  client.signAndWrap(playload, ieType);
+
+                if (!StringUtils.isEmpty(result)) {
+                    break;
+                } else {
+                    Thread.sleep(httpClientProp.getRetryInterval());
+                }
+            } catch (Exception e) {
+                logger.error(String.format("thrift sign and wrap error key:[%s], ieType:[%s]", key, ieType), e);
+            } finally {
+                if (null != client) {
+                    signClientPool.returnObject(client);
+                }
             }
         }
 

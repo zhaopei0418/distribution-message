@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 8181
 
 
 distribution:
@@ -11,7 +11,7 @@ distribution:
   otherRabbitInputQueue:
   # dir|fileExtension|periodic(s)|maxMessagesPerPoll|minConcurrency|maxConcurrency|keepAliveSeconds|queueCcpacity|threadNamePrefix
   otherDirectorInput:
-    #- /home/zhaopei/Desktop/share/init/send|.xml|20000|2|4|8|3000|2000|share-send-
+    #- /home/zhaopei/Desktop/share/init/send|.xml|5000|2|4|8|3000|2000|share-send-
   # 打包链配置, 发送者id|接收者id|类型(i=ibm输入通道; r=rabbitmq输入通道; d=dir输入通道;)|相对应输入通道的索引 如:  senderId|receiverId|type|index
   wrapChain:
     #- EcssEnt_tgfz|ecssentInvt|d|0
@@ -19,6 +19,11 @@ distribution:
   # 优先签名打包链，如果打包链也相应配置
   # 如: http://127.0.0.1:52221/signservice/sign/signAndWrap|E|r|0
   signAndWrapChain:
+  # 签名打包通过thrift远程调用签名打包服务
+  # 格式如下 ip地址|端口|超时|最小空闲连接|最大空闲连接|最大连接数|进出口类型|消息类型|相对应消息类型索引
+  # 例子 192.168.10.70|9090|30000|8|10|10|E|r|0
+  thriftSignAndWrapChain:
+    #- 127.0.0.1|9090|30000|4|4|4|E|d|0
   # hostName|port|queueManager|channel|ccsid|sessionCacheSize
   otherOutputQueue:
   # host|port|username|password|virtualHost|cacheModel|channelCacheSize|connectionCacheSize|connectionLimit

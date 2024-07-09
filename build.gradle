@@ -30,6 +30,9 @@ dependencies {
     // https://mvnrepository.com/artifact/commons-lang/commons-lang
     implementation group: 'commons-lang', name: 'commons-lang', version: '2.6'
     implementation group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.14'
+    implementation group: 'org.apache.thrift', name: 'libthrift', version: '0.20.0'
+//    implementation group: 'io.netty', name: 'netty-all', version: '4.1.111.Final'
+    implementation group: 'org.apache.commons', name: 'commons-pool2', version: '2.12.0'
 
     implementation fileTree(dir: 'libs', includes: ['*.jar'])
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

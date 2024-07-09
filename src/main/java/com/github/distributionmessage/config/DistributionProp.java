@@ -33,6 +33,8 @@ public class DistributionProp {
 
     private List<String> signAndWrapChain;
 
+    private List<String> thriftSignAndWrapChain;
+
     private Boolean conditionMutualExclusion;
 
     private Map<String, String> dxpidDistribution;
