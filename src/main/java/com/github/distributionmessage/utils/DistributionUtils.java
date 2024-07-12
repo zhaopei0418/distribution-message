@@ -388,9 +388,13 @@ public class DistributionUtils {
         String result = null;
         for (int i = 0; i < httpClientProp.getRetryTimes(); i++) {
             try {
+                long startTime = System.currentTimeMillis();
                 client = signClientPool.borrowObject();
 
                 result =  client.signAndWrap(playload, ieType);
+                String printInfo = String.format("CopMsgId: [%s], SenderId: [%s], ReceiverId: [%s], CreatTime: [%s], MsgType: [%s]", getCopMsgId(result),
+                        getSenderIdByMessage(result), getDxpIdByMessage(result), getCreatTime(result), getMessageType(result));
+                logger.info(String.format("request thrift sign wrap param {ieType: [%s]} result [%s] cost time [%d]ms.", ieType, printInfo, (System.currentTimeMillis() - startTime)));
 
                 if (!StringUtils.isEmpty(result)) {
                     break;
