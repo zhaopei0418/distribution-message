@@ -31,6 +31,8 @@ public class DistributionProp {
 
     private List<String> wrapChain;
 
+    private List<String> svWrapChain;
+
     private List<String> signAndWrapChain;
 
     private List<String> thriftSignAndWrapChain;
@@ -60,4 +62,6 @@ public class DistributionProp {
     private String fileSuffix;
 
     private Boolean unWrap;
+
+    private Boolean removeSvHead;
 }

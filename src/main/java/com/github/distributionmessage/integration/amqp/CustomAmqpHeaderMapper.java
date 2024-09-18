@@ -27,6 +27,16 @@ public class CustomAmqpHeaderMapper extends DefaultAmqpHeaderMapper {
 
     private String ieType;
 
+    private String startNode;
+
+    private String endNode;
+
+    public CustomAmqpHeaderMapper(String endNode, String startNode) {
+        this(DefaultAmqpHeaderMapper.inboundRequestHeaders(), DefaultAmqpHeaderMapper.inboundReplyHeaders());
+        this.endNode = endNode;
+        this.startNode = startNode;
+    }
+
     protected CustomAmqpHeaderMapper(String[] requestHeaderNames, String[] replyHeaderNames) {
         super(requestHeaderNames, replyHeaderNames);
     }
@@ -55,12 +65,22 @@ public class CustomAmqpHeaderMapper extends DefaultAmqpHeaderMapper {
             if (StringUtils.isNotBlank(this.ieType)) {
                 result.put(CommonConstant.SIGN_AND_WRAP_IE_TYPE, this.ieType);
             }
+            if (StringUtils.isNotBlank(this.startNode)) {
+                result.put(CommonConstant.START_NODE, this.startNode);
+            }
+            if (StringUtils.isNotBlank(this.endNode)) {
+                result.put(CommonConstant.END_NODE, this.endNode);
+            }
         }
         return result;
     }
 
     public static CustomAmqpHeaderMapper inboundWrapMapper(String senderId, String receiverId) {
         return new CustomAmqpHeaderMapper(senderId, receiverId, null, null);
+    }
+
+    public static CustomAmqpHeaderMapper inboundSvWrapMapper(String startNode, String endNode) {
+        return new CustomAmqpHeaderMapper(startNode, endNode);
     }
 
     public static CustomAmqpHeaderMapper inboundSignAndWrapMapper(String serviceUrl, String ieType) {

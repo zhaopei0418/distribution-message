@@ -8,6 +8,7 @@ import com.github.distributionmessage.listener.DistributionMessageListener;
 import com.github.distributionmessage.thread.RabbitSendMessageThread;
 import com.github.distributionmessage.thread.SendMessageThread;
 import com.github.distributionmessage.transformer.SignAndWrapTransformer;
+import com.github.distributionmessage.transformer.SvWrapTransformer;
 import com.github.distributionmessage.transformer.ThriftSignAndWrapTransformer;
 import com.github.distributionmessage.transformer.WrapTransformer;
 import com.github.distributionmessage.utils.DistributionUtils;
@@ -166,6 +167,12 @@ public class IntegrationConfiguration {
     @ServiceActivator(inputChannel = ChannelConstant.WRAP_CHANNEL, outputChannel = ChannelConstant.IBMMQ_RECEIVE_CHANNEL)
     public WrapTransformer wrapTransformer() {
         return new WrapTransformer();
+    }
+
+    @Bean
+    @ServiceActivator(inputChannel = ChannelConstant.SV_WRAP_CHANNEL, outputChannel = ChannelConstant.IBMMQ_RECEIVE_CHANNEL)
+    public SvWrapTransformer svWrapTransformer() {
+        return new SvWrapTransformer();
     }
 
     @Bean

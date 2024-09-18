@@ -15,6 +15,9 @@ distribution:
   # 打包链配置, 发送者id|接收者id|类型(i=ibm输入通道; r=rabbitmq输入通道; d=dir输入通道;)|相对应输入通道的索引 如:  senderId|receiverId|type|index
   wrapChain:
     #- EcssEnt_tgfz|ecssentInvt|d|0
+  # 传输节点打包链配置, 开始节点id|结束节点id|类型(i=ibm输入通道; r=rabbitmq输入通道; d=dir输入通道;)|相对应输入通道的索引 如:  senderId|receiverId|type|index
+  svWrapChain:
+    #- 46000002|00000002|i|0
   # 签名打包链配置, 签名服务地址|进出口类型(I:进口, E:出口)|通道类(i=ibm输入通道; r=rabbitmq输入通道; d=dir输入通道;)|相对应输入通道的索引 型
   # 优先签名打包链，如果打包链也相应配置
   # 如: http://127.0.0.1:52221/signservice/sign/signAndWrap|E|r|0
@@ -53,6 +56,7 @@ distribution:
   fileSuffix: .xml
   # 存文件的时候是否解dxp封装
   unWrap: true
+  removeSvHead: true
 
 httpclient:
   headerUserAgent: "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36"

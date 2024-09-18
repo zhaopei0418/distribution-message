@@ -26,6 +26,15 @@ public class CustomJmsHeaderMapper extends DefaultJmsHeaderMapper {
 
     private String ieType;
 
+    private String startNode;
+
+    private String endNode;
+
+    public CustomJmsHeaderMapper(String startNode, String endNode) {
+        this.startNode = startNode;
+        this.endNode = endNode;
+    }
+
     public CustomJmsHeaderMapper(String senderId, String receiverId, String serviceUrl, String ieType) {
         this.senderId = senderId;
         this.receiverId = receiverId;
@@ -49,6 +58,12 @@ public class CustomJmsHeaderMapper extends DefaultJmsHeaderMapper {
             if (StringUtils.isNotBlank(this.ieType)) {
                 result.put(CommonConstant.SIGN_AND_WRAP_IE_TYPE, this.ieType);
             }
+            if (StringUtils.isNotBlank(this.startNode)) {
+                result.put(CommonConstant.START_NODE, this.startNode);
+            }
+            if (StringUtils.isNotBlank(this.endNode)) {
+                result.put(CommonConstant.END_NODE, this.endNode);
+            }
         }
 
         return result;
@@ -56,6 +71,10 @@ public class CustomJmsHeaderMapper extends DefaultJmsHeaderMapper {
 
     public static CustomJmsHeaderMapper createWrapHeaderMapper(String senderId, String receiverId) {
         return new CustomJmsHeaderMapper(senderId, receiverId, null, null);
+    }
+
+    public static CustomJmsHeaderMapper createSvWrapHeaderMapper(String startNode, String endNode) {
+        return new CustomJmsHeaderMapper(startNode, endNode);
     }
 
     public static CustomJmsHeaderMapper createSignAndWrapHeaderMapper(String serviceUrl, String ieType) {

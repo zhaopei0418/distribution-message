@@ -27,6 +27,15 @@ public class CustomFileReadingMessageSource extends FileReadingMessageSource {
 
     private String ieType;
 
+    private String startNode;
+
+    private String endNode;
+
+    public CustomFileReadingMessageSource(String startNode, String endNode) {
+        super(null);
+        this.startNode = startNode;
+        this.endNode = endNode;
+    }
 
     public CustomFileReadingMessageSource(String senderId, String receiverId, String serviceUrl, String ieType) {
         super(null);
@@ -52,12 +61,22 @@ public class CustomFileReadingMessageSource extends FileReadingMessageSource {
             if (StringUtils.isNotBlank(this.ieType)) {
                 fileAbstractIntegrationMessageBuilder.setHeader(CommonConstant.SIGN_AND_WRAP_IE_TYPE, this.ieType);
             }
+            if (StringUtils.isNotBlank(this.startNode)) {
+                fileAbstractIntegrationMessageBuilder.setHeader(CommonConstant.START_NODE, this.startNode);
+            }
+            if (StringUtils.isNotBlank(this.endNode)) {
+                fileAbstractIntegrationMessageBuilder.setHeader(CommonConstant.END_NODE, this.endNode);
+            }
         }
         return fileAbstractIntegrationMessageBuilder;
     }
 
     public static CustomFileReadingMessageSource wrapMessageSource(String senderId, String receiverId) {
         return new CustomFileReadingMessageSource(senderId, receiverId, null, null);
+    }
+
+    public static CustomFileReadingMessageSource svWrapMessageSource(String startNode, String endNode) {
+        return new CustomFileReadingMessageSource(startNode, endNode);
     }
 
     public static CustomFileReadingMessageSource signAndWrapMessageSource(String serviceUrl, String ieType) {

@@ -5,6 +5,7 @@ import com.github.distributionmessage.config.IntegrationConfiguration;
 import com.github.distributionmessage.constant.ChannelConstant;
 import com.github.distributionmessage.constant.CommonConstant;
 import com.github.distributionmessage.domain.SignWrapParam;
+import com.github.distributionmessage.domain.SvWrapParam;
 import com.github.distributionmessage.domain.WrapParam;
 import com.github.distributionmessage.integration.amqp.CustomAmqpHeaderMapper;
 import com.github.distributionmessage.integration.amqp.CustomJmsHeaderMapper;
@@ -43,10 +44,8 @@ import javax.jms.JMSException;
 import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.math.BigInteger;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -66,6 +65,10 @@ public class CommonUtils {
     private static Map<Integer, WrapParam> ibmWrapParamMap = new HashMap<>();
     private static Map<Integer, WrapParam> rabbitmqWrapParamMap = new HashMap<>();
     private static Map<Integer, WrapParam> dirWrapParamMap = new HashMap<>();
+
+    private static Map<Integer, SvWrapParam> ibmSvWrapParamMap = new HashMap<>();
+    private static Map<Integer, SvWrapParam> rabbitmqSvWrapParamMap = new HashMap<>();
+    private static Map<Integer, SvWrapParam> dirSvWrapParamMap = new HashMap<>();
 
     private static Map<Integer, SignWrapParam> ibmSignWrapParamMap = new HashMap<>();
     private static Map<Integer, SignWrapParam> rabbitmqSignWrapParamMap = new HashMap<>();
@@ -97,6 +100,7 @@ public class CommonUtils {
 
     public static void initParams() {
         initWrapParamMap();
+        initSvWrapParamMap();
         initSignWrapParamMap();
         initThriftSignWrapParamMap();
 
@@ -164,6 +168,55 @@ public class CommonUtils {
                     rabbitmqWrapParamMap.put(index, wrapParam);
                 } else {
                     dirWrapParamMap.put(index, wrapParam);
+                }
+
+            } catch (Exception e) {
+                logError(logger, e);
+            }
+
+        }
+    }
+
+    public static void initSvWrapParamMap() {
+        if (CollectionUtils.isEmpty(distributionProp.getSvWrapChain())) {
+            logger.error("svWrapChain error");
+            return;
+        }
+
+        String svWrapChain = null;
+        String[] chainInfos = null;
+        String startNode = null;
+        String endNode = null;
+        String type = null;
+        int index = 0;
+        SvWrapParam svWrapParam = null;
+
+        for (int i = 0 ; i < distributionProp.getSvWrapChain().size(); i++) {
+            svWrapChain = distributionProp.getSvWrapChain().get(i);
+
+            chainInfos = svWrapChain.split("\\|");
+            for (int j = 0; j < chainInfos.length; j++) {
+                logger.info("chainInfos=[" + j + "]=[" + chainInfos[j] + "]");
+            }
+            if (chainInfos.length < 4) {
+                log.error(String.format("chainInfos=[%s] error!", svWrapChain));
+                continue;
+            }
+
+            try {
+                startNode = chainInfos[0].trim();
+                endNode = chainInfos[1].trim();
+                type = chainInfos[2].trim();
+                index = Integer.parseInt(chainInfos[3].trim());
+
+                svWrapParam = new SvWrapParam(startNode, endNode);
+
+                if ("i".equalsIgnoreCase(type)) {
+                    ibmSvWrapParamMap.put(index, svWrapParam);
+                } else if ("r".equalsIgnoreCase(type)) {
+                    rabbitmqSvWrapParamMap.put(index, svWrapParam);
+                } else {
+                    dirSvWrapParamMap.put(index, svWrapParam);
                 }
 
             } catch (Exception e) {
@@ -427,6 +480,10 @@ public class CommonUtils {
                                 WrapParam wrapParam = ibmWrapParamMap.get(k);
                                 channelPublishingJmsMessageListener.setHeaderMapper(CustomJmsHeaderMapper.createWrapHeaderMapper(wrapParam.getSenderId(), wrapParam.getReceiverId()));
                                 outputChannelName = ChannelConstant.WRAP_CHANNEL;
+                            } else if (ibmSvWrapParamMap.containsKey(k)) {
+                                SvWrapParam svWrapParam = ibmSvWrapParamMap.get(k);
+                                channelPublishingJmsMessageListener.setHeaderMapper(CustomJmsHeaderMapper.createSvWrapHeaderMapper(svWrapParam.getStartNode(), svWrapParam.getEndNode()));
+                                outputChannelName = ChannelConstant.SV_WRAP_CHANNEL;
                             } else if (thriftIbmSignWrapParamMap.containsKey(k)) {
                                 SignWrapParam signWrapParam = thriftIbmSignWrapParamMap.get(k);
                                 channelPublishingJmsMessageListener.setHeaderMapper(CustomJmsHeaderMapper.createSignAndWrapHeaderMapper(signWrapParam.getServiceUrl(), signWrapParam.getIeType()));
@@ -646,6 +703,8 @@ public class CommonUtils {
                     propertyValueMap.put("outputChannelName", ChannelConstant.SIGN_WRAP_CHANNEL);
                 } else if (rabbitmqWrapParamMap.containsKey(k)) {
                     propertyValueMap.put("outputChannelName", ChannelConstant.WRAP_CHANNEL);
+                } else if (rabbitmqSvWrapParamMap.containsKey(k)) {
+                    propertyValueMap.put("outputChannelName", ChannelConstant.SV_WRAP_CHANNEL);
                 } else if (thriftRabbitmqSignWrapParamMap.containsKey(k)) {
                     propertyValueMap.put("outputChannelName", ChannelConstant.THRIFT_SIGN_WRAP_CHANNEL);
                 } else {
@@ -661,6 +720,9 @@ public class CommonUtils {
                 } else if (rabbitmqWrapParamMap.containsKey(k)) {
                     WrapParam wrapParam = rabbitmqWrapParamMap.get(k);
                     amqpInboundChannelAdapter.setHeaderMapper(CustomAmqpHeaderMapper.inboundWrapMapper(wrapParam.getSenderId(), wrapParam.getReceiverId()));
+                } else if (rabbitmqSvWrapParamMap.containsKey(k)) {
+                    SvWrapParam svWrapParam = rabbitmqSvWrapParamMap.get(k);
+                    amqpInboundChannelAdapter.setHeaderMapper(CustomAmqpHeaderMapper.inboundSvWrapMapper(svWrapParam.getStartNode(), svWrapParam.getEndNode()));
                 } else if (thriftRabbitmqSignWrapParamMap.containsKey(k)) {
                     SignWrapParam signWrapParam = thriftRabbitmqSignWrapParamMap.get(k);
                     amqpInboundChannelAdapter.setHeaderMapper(CustomAmqpHeaderMapper.inboundSignAndWrapMapper(signWrapParam.getServiceUrl(), signWrapParam.getIeType()));
@@ -817,6 +879,10 @@ public class CommonUtils {
                     WrapParam wrapParam = dirWrapParamMap.get(k);
                     fileReadingMessageSource = CustomFileReadingMessageSource.wrapMessageSource(wrapParam.getSenderId(), wrapParam.getReceiverId());
                     outputChannelName = ChannelConstant.WRAP_CHANNEL;
+                } else if (dirSvWrapParamMap.containsKey(k)) {
+                    SvWrapParam svWrapParam = dirSvWrapParamMap.get(k);
+                    fileReadingMessageSource = CustomFileReadingMessageSource.svWrapMessageSource(svWrapParam.getStartNode(), svWrapParam.getEndNode());
+                    outputChannelName = ChannelConstant.SV_WRAP_CHANNEL;
                 } else if (thriftDirSignWrapParamMap.containsKey(k)) {
                     SignWrapParam signWrapParam = thriftDirSignWrapParamMap.get(k);
                     fileReadingMessageSource = CustomFileReadingMessageSource.signAndWrapMessageSource(signWrapParam.getServiceUrl(), signWrapParam.getIeType());
@@ -880,6 +946,11 @@ public class CommonUtils {
             }
         }
         defaultListableBeanFactory.registerBeanDefinition(beanName, beanDefinitionBuilder.getBeanDefinition());
+    }
+
+    public static String generateSeqNo(int length) {
+        Random random = new Random();
+        return String.format("%0" + length + "d", random.nextInt(new BigInteger("10000000000").intValue()));
     }
 
     public static void logError(Log log, Throwable t) {

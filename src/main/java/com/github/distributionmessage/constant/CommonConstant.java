@@ -25,11 +25,17 @@ public interface CommonConstant {
 
     String RECEIVE_ID = MESSAGE_HEADER_PREFIX + "receiveId";
 
+    String START_NODE = MESSAGE_HEADER_PREFIX + "startNode";
+
+    String END_NODE = MESSAGE_HEADER_PREFIX + "endNode";
+
     String HEADER_FILE_NAME = "file_name";
 
     String READ_FILE_SUFFIX = ".reading";
 
     DateTimeFormatter LOCAL_DATE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+
+    DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
     String IE_TYPE_IMPORT = "I";
 

@@ -19,6 +19,7 @@ import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -309,6 +310,36 @@ public class DistributionUtils {
         return stringBuffer.toString();
     }
 
+    public static String svWrap(byte[] data, String startNode, String endNode) {
+        if (null == data || data.length == 0) {
+            return null;
+        }
+
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+        stringBuffer.append("<DxpMsgSv xmlns=\"http://www.chinaport.gov.cn/dxp\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" ver=\"1.0\">\n");
+        stringBuffer.append("    <SvNo Ver=\"1.0\">\n");
+//        stringBuffer.append(String.format("        <MsgId>%s</MsgId>\n", UUID.randomUUID().toString().replaceAll("-", "")));
+        stringBuffer.append(String.format("        <MsgId>%s</MsgId>\n", buildSvMsgId(startNode)));
+        stringBuffer.append("         <SubMsgId>1</SubMsgId>\n");
+        stringBuffer.append(String.format("         <SendTime>%s</SendTime>\n", CommonConstant.LOCAL_DATE_TIME.format(LocalDateTime.now())));
+        stringBuffer.append(String.format("         <EndNode>%s</EndNode>\n", startNode));
+        stringBuffer.append(String.format("         <StaNode>%s</StaNode>\n", endNode));
+        stringBuffer.append("    </SvNo>\n    ");
+        stringBuffer.append(new String(data, StandardCharsets.UTF_8).replaceAll("<\\?xml.*?\\?>", ""));
+        stringBuffer.append("\n</DxpMsgSv>");
+
+        return stringBuffer.toString();
+    }
+
+    public static String svWrap(String data, String startNode, String endNode) {
+        if (org.apache.commons.lang3.StringUtils.isBlank(data)) {
+            return null;
+        }
+
+        return svWrap(data.getBytes(StandardCharsets.UTF_8), startNode, endNode);
+    }
+
     public static String wrap(String ceb, String senderId, String receiverId) {
         if (StringUtils.isEmpty(ceb)) {
             return null;
@@ -411,6 +442,15 @@ public class DistributionUtils {
         }
 
         return result;
+    }
+
+    public static String buildSvMsgId(String startNode) {
+        if (org.apache.commons.lang3.StringUtils.isBlank(startNode)) {
+            return null;
+        }
+
+        return String.format("%s%s%s", startNode, CommonConstant.DATE_TIME_FORMATTER.format(LocalDateTime.now()),
+            CommonUtils.generateSeqNo(10));
     }
 
     public static void setHttpClientProp(HttpClientProp httpClientProp) {
