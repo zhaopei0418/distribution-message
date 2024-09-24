@@ -1,7 +1,6 @@
 server:
   port: 8181
 
-
 distribution:
   cacheSize: 2000
   poolSize: 4
@@ -27,6 +26,10 @@ distribution:
   # 例子 192.168.10.70|9090|30000|8|10|10|E|r|0
   thriftSignAndWrapChain:
     #- 127.0.0.1|9090|30000|4|4|4|E|d|0
+  # 海关头封装链 类型(i=ibm输入通道; r=rabbitmq输入通道; d=dir输入通道;)|相对应输入通道的索引 如: i|0, 就是对ibmmq第一个输入通道进行封装
+  hgSendWrapChain:
+  # 海关头解封链 类型(i=ibm输入通道; r=rabbitmq输入通道; d=dir输入通道;)|相对应输入通道的索引 如: i|0, 就是对ibmmq第一个输入通道进行解封
+  hgHeadUnWrapChain:
   # hostName|port|queueManager|channel|ccsid|sessionCacheSize
   otherOutputQueue:
   # host|port|username|password|virtualHost|cacheModel|channelCacheSize|connectionCacheSize|connectionLimit

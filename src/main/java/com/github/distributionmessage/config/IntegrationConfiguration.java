@@ -14,6 +14,7 @@ import com.github.distributionmessage.transformer.WrapTransformer;
 import com.github.distributionmessage.utils.DistributionUtils;
 import com.github.distributionmessage.utils.HttpClientUtils;
 import com.github.distributionmessage.utils.MessageUtils;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +37,7 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
+
 import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
@@ -46,6 +48,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import com.github.distributionmessage.transformer.HGHeadUnWrapTransformer;
+import com.github.distributionmessage.transformer.HGSendWrapTransformer;
 
 /**
  * @author zhaopei
@@ -185,6 +190,18 @@ public class IntegrationConfiguration {
     @ServiceActivator(inputChannel = ChannelConstant.THRIFT_SIGN_WRAP_CHANNEL, outputChannel = ChannelConstant.IBMMQ_RECEIVE_CHANNEL)
     public ThriftSignAndWrapTransformer thriftSignAndWrapTransformer() {
         return new ThriftSignAndWrapTransformer();
+    }
+
+    @Bean
+    @ServiceActivator(inputChannel = ChannelConstant.HG_SEND_WRAP_CHANNEL, outputChannel = ChannelConstant.IBMMQ_RECEIVE_CHANNEL)
+    public HGSendWrapTransformer hgSendWrapTransformer() {
+        return new HGSendWrapTransformer();
+    }
+
+    @Bean
+    @ServiceActivator(inputChannel = ChannelConstant.HG_HEAD_UNWRAP_CHANNEL, outputChannel = ChannelConstant.IBMMQ_RECEIVE_CHANNEL)
+    public HGHeadUnWrapTransformer hgHeadUnWrapTransformer() {
+        return new HGHeadUnWrapTransformer();
     }
 
     @Bean

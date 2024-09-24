@@ -25,3 +25,5 @@ WebContent/.idea/
 *.ear
 .h2
 .meghanada
+.vscode
+.history

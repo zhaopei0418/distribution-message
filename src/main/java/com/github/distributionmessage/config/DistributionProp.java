@@ -37,6 +37,10 @@ public class DistributionProp {
 
     private List<String> thriftSignAndWrapChain;
 
+    private List<String> hgSendWrapChain;
+
+    private List<String> hgHeadUnWrapChain;
+
     private Boolean conditionMutualExclusion;
 
     private Map<String, String> dxpidDistribution;

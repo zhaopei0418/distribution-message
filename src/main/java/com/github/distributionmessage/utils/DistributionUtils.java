@@ -1,11 +1,18 @@
 package com.github.distributionmessage.utils;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
-import com.github.distributionmessage.config.DistributionProp;
-import com.github.distributionmessage.config.HttpClientProp;
-import com.github.distributionmessage.constant.CommonConstant;
-import com.github.distributionmessage.thrift.SignService;
+import java.io.ByteArrayInputStream;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -13,18 +20,13 @@ import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.springframework.util.StringUtils;
 import org.w3c.dom.Document;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import java.io.ByteArrayInputStream;
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.github.distributionmessage.config.DistributionProp;
+import com.github.distributionmessage.config.HttpClientProp;
+import com.github.distributionmessage.constant.CommonConstant;
+import com.github.distributionmessage.thrift.SignService;
+
 
 public class DistributionUtils {
 
@@ -346,6 +348,43 @@ public class DistributionUtils {
         }
 
         return wrap(ceb.getBytes(StandardCharsets.UTF_8), senderId, receiverId);
+    }
+
+    public static byte[] hgSendWrap(String data) {
+        if (StringUtils.isEmpty(data)) {
+            return null;
+        }
+
+        return hgSendWrap(data.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public static byte[] hgSendWrap(byte[] data) {
+        if (null == data || 0 == data.length) {
+            return null;
+        }
+
+        byte[] rs = new byte[data.length + 1];
+        System.arraycopy(data, 0, rs, 1, data.length);
+        rs[0] = 0;
+        return rs;
+    }
+
+    public static byte[] removeHGHead(String data) {
+        if (StringUtils.isEmpty(data)) {
+            return null;
+        }
+
+        return removeHGHead(data.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public static byte[] removeHGHead(byte[] data) {
+        if (null == data || 0 == data.length) {
+            return null;
+        }
+
+        byte[] rs = new byte[data.length - 1];
+        System.arraycopy(data, 1, rs, 0, rs.length);
+        return rs;
     }
 
     public static String getMessageTypeByCebMessage(String message) {

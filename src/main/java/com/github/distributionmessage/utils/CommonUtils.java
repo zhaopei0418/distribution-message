@@ -74,6 +74,14 @@ public class CommonUtils {
     private static Map<Integer, SignWrapParam> rabbitmqSignWrapParamMap = new HashMap<>();
     private static Map<Integer, SignWrapParam> dirSignWrapParamMap = new HashMap<>();
 
+    private static Map<Integer, Boolean> ibmHGSendWrapParamMap = new HashMap<>();
+    private static Map<Integer, Boolean> rabbitmqHGSendWrapParamMap = new HashMap<>();
+    private static Map<Integer, Boolean> dirHGSendWrapParamMap = new HashMap<>();
+
+    private static Map<Integer, Boolean> ibmHGHeadUnWrapParamMap = new HashMap<>();
+    private static Map<Integer, Boolean> rabbitmqHGHeadUnWrapParamMap = new HashMap<>();
+    private static Map<Integer, Boolean> dirHGHeadUnWrapParamMap = new HashMap<>();
+
     private static Map<String, GenericObjectPool<TSocket>> thriftSocketPoolMap = new ConcurrentHashMap<>();
     private static Map<String, GenericObjectPool<SignService.Client>> thriftSignClientPoolMap = new ConcurrentHashMap<>();
     private static Map<Integer, SignWrapParam> thriftIbmSignWrapParamMap = new HashMap<>();
@@ -103,6 +111,9 @@ public class CommonUtils {
         initSvWrapParamMap();
         initSignWrapParamMap();
         initThriftSignWrapParamMap();
+        
+        initHGSendWrap();
+        initHGHeadUnWrap();
 
         initJmsTemplateList();
         initRabbitTemplateList();
@@ -370,6 +381,90 @@ public class CommonUtils {
         }
     }
 
+    public static void initHGSendWrap() {
+        if (CollectionUtils.isEmpty(distributionProp.getHgSendWrapChain())) {
+            logger.error("wrapChain error");
+            return;
+        }
+
+        String hgSendWrapChain = null;
+        String[] chainInfos = null;
+        String type = null;
+        int index = 0;
+
+        for (int i = 0 ; i < distributionProp.getHgSendWrapChain().size(); i++) {
+            hgSendWrapChain = distributionProp.getHgSendWrapChain().get(i);
+
+            chainInfos = hgSendWrapChain.split("\\|");
+            for (int j = 0; j < chainInfos.length; j++) {
+                logger.info("chainInfos=[" + j + "]=[" + chainInfos[j] + "]");
+            }
+            if (chainInfos.length < 2) {
+                log.error(String.format("chainInfos=[%s] error!", hgSendWrapChain));
+                continue;
+            }
+
+            try {
+                type = chainInfos[0].trim();
+                index = Integer.parseInt(chainInfos[1].trim());
+
+                if ("i".equalsIgnoreCase(type)) {
+                    ibmHGSendWrapParamMap.put(index, true);
+                } else if ("r".equalsIgnoreCase(type)) {
+                    rabbitmqHGSendWrapParamMap.put(index, true);
+                } else {
+                    dirHGSendWrapParamMap.put(index, true);
+                }
+
+            } catch (Exception e) {
+                logError(logger, e);
+            }
+
+        }
+    }
+
+    public static void initHGHeadUnWrap() {
+        if (CollectionUtils.isEmpty(distributionProp.getHgHeadUnWrapChain())) {
+            logger.error("wrapChain error");
+            return;
+        }
+
+        String hgHeadUnWrapParam = null;
+        String[] chainInfos = null;
+        String type = null;
+        int index = 0;
+
+        for (int i = 0 ; i < distributionProp.getHgHeadUnWrapChain().size(); i++) {
+            hgHeadUnWrapParam = distributionProp.getHgHeadUnWrapChain().get(i);
+
+            chainInfos = hgHeadUnWrapParam.split("\\|");
+            for (int j = 0; j < chainInfos.length; j++) {
+                logger.info("chainInfos=[" + j + "]=[" + chainInfos[j] + "]");
+            }
+            if (chainInfos.length < 2) {
+                log.error(String.format("chainInfos=[%s] error!", hgHeadUnWrapParam));
+                continue;
+            }
+
+            try {
+                type = chainInfos[0].trim();
+                index = Integer.parseInt(chainInfos[1].trim());
+
+                if ("i".equalsIgnoreCase(type)) {
+                    ibmHGHeadUnWrapParamMap.put(index, true);
+                } else if ("r".equalsIgnoreCase(type)) {
+                    rabbitmqHGHeadUnWrapParamMap.put(index, true);
+                } else {
+                    dirHGHeadUnWrapParamMap.put(index, true);
+                }
+
+            } catch (Exception e) {
+                logError(logger, e);
+            }
+
+        }
+    }
+
     private static void initOtherListenerContainer() {
         if (null == distributionProp.getOtherInputQueue() || distributionProp.getOtherInputQueue().isEmpty()) {
             logger.error("otherInputQueue error");
@@ -488,6 +583,10 @@ public class CommonUtils {
                                 SignWrapParam signWrapParam = thriftIbmSignWrapParamMap.get(k);
                                 channelPublishingJmsMessageListener.setHeaderMapper(CustomJmsHeaderMapper.createSignAndWrapHeaderMapper(signWrapParam.getServiceUrl(), signWrapParam.getIeType()));
                                 outputChannelName = ChannelConstant.THRIFT_SIGN_WRAP_CHANNEL;
+                            } else if (ibmHGSendWrapParamMap.containsKey(k)) {
+                                outputChannelName = ChannelConstant.HG_SEND_WRAP_CHANNEL;
+                            } else if (ibmHGHeadUnWrapParamMap.containsKey(k)) {
+                                outputChannelName = ChannelConstant.HG_HEAD_UNWRAP_CHANNEL;
                             } else {
                                 outputChannelName = ChannelConstant.IBMMQ_RECEIVE_CHANNEL;
                             }
@@ -707,6 +806,10 @@ public class CommonUtils {
                     propertyValueMap.put("outputChannelName", ChannelConstant.SV_WRAP_CHANNEL);
                 } else if (thriftRabbitmqSignWrapParamMap.containsKey(k)) {
                     propertyValueMap.put("outputChannelName", ChannelConstant.THRIFT_SIGN_WRAP_CHANNEL);
+                } else if (ibmHGSendWrapParamMap.containsKey(k)) {
+                    propertyValueMap.put("outputChannelName", ChannelConstant.HG_SEND_WRAP_CHANNEL);
+                } else if (ibmHGHeadUnWrapParamMap.containsKey(k)) {
+                    propertyValueMap.put("outputChannelName", ChannelConstant.HG_HEAD_UNWRAP_CHANNEL);
                 } else {
                     propertyValueMap.put("outputChannelName", ChannelConstant.IBMMQ_RECEIVE_CHANNEL);
                 }
@@ -887,6 +990,12 @@ public class CommonUtils {
                     SignWrapParam signWrapParam = thriftDirSignWrapParamMap.get(k);
                     fileReadingMessageSource = CustomFileReadingMessageSource.signAndWrapMessageSource(signWrapParam.getServiceUrl(), signWrapParam.getIeType());
                     outputChannelName = ChannelConstant.THRIFT_SIGN_WRAP_CHANNEL;
+                } else if (ibmHGSendWrapParamMap.containsKey(k)) {
+                    fileReadingMessageSource = new FileReadingMessageSource();
+                    outputChannelName = ChannelConstant.HG_SEND_WRAP_CHANNEL;
+                } else if (ibmHGHeadUnWrapParamMap.containsKey(k)) {
+                    fileReadingMessageSource = new FileReadingMessageSource();
+                    outputChannelName = ChannelConstant.HG_HEAD_UNWRAP_CHANNEL;
                 } else {
                     fileReadingMessageSource = new FileReadingMessageSource();
                     outputChannelName = ChannelConstant.FILE_RECEIVE_CHANNEL;

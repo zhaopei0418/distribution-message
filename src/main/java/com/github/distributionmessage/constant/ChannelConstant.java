@@ -19,4 +19,8 @@ public interface ChannelConstant {
     String SIGN_WRAP_CHANNEL = "signWrapChannel";
 
     String THRIFT_SIGN_WRAP_CHANNEL = "thriftSignWrapChannel";
+
+    String HG_SEND_WRAP_CHANNEL = "hgSendWrapChannel";
+
+    String HG_HEAD_UNWRAP_CHANNEL = "hgHeadUnwrapChannel";
 }
