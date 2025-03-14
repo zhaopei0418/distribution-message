@@ -105,9 +105,16 @@ public class DistributionSendingMessageHandler extends AbstractMessageHandler {
                     queue.setCCSID(useCcsid);
                     queue.setBaseQueueName(queueName);
                     IntegrationConfiguration.CACHE_QUEUE.put(1);
-                    SendMessageThread.getExecutorService().execute(
-                            null != useJmsTemplate ? new SendMessageThread(useJmsTemplate, playload, queue, messagePostProcessor)
-                                    : new RabbitSendMessageThread(userRabbitmqTemplate, sm, queueName));
+                    if (null != useJmsTemplate) {
+                        SendMessageThread.getExecutorService().execute(
+                            new SendMessageThread(useJmsTemplate, playload, queue, messagePostProcessor));
+                    } else {
+                        RabbitSendMessageThread.getExecutorService().execute(
+                            new RabbitSendMessageThread(userRabbitmqTemplate, sm, queueName));
+                    }
+//                    SendMessageThread.getExecutorService().execute(
+//                            null != useJmsTemplate ? new SendMessageThread(useJmsTemplate, playload, queue, messagePostProcessor)
+//                                    : new RabbitSendMessageThread(userRabbitmqTemplate, sm, queueName));
                     logger.info("cache size [" + IntegrationConfiguration.CACHE_QUEUE.size() + "] senderId=[" + senderId + "] dxpId=[" + dxpid + "] messageType=["
                             + msgtype + "] ccsid=[" + useCcsid + "] distributionQueue=[" + queueName + "] use["
                             + ((double) (System.nanoTime() - startTime) / 1000000.0) + "]ms");
