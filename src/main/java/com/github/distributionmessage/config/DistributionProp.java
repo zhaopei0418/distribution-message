@@ -49,6 +49,8 @@ public class DistributionProp {
 
     private Map<String, String> senderIdDistribution;
 
+    private Map<String, Map<String, String>> businessDataDistribution;
+
     private Map<String, Integer> percentageDistribution;
 
     //比重总数

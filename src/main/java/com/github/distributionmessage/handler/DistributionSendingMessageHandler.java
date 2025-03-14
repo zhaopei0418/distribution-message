@@ -22,6 +22,7 @@ import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 
 /**
  * @author zhaopei
@@ -70,7 +71,7 @@ public class DistributionSendingMessageHandler extends AbstractMessageHandler {
                 String dxpid = DistributionUtils.getDxpIdByMessage(sm);
                 String senderId = DistributionUtils.getSenderIdByMessage(sm);
                 String msgtype = DistributionUtils.getMessageType(sm);
-                String originQueueName = DistributionUtils.getDestinationQueueName(this.distributionProp, dxpid, msgtype, senderId);
+                String originQueueName = DistributionUtils.getDestinationQueueName(this.distributionProp, dxpid, msgtype, senderId, sm);
                 String[] queueNames = null;
                 logger.info("search queueName is [" + originQueueName + "]");
                 if (originQueueName.indexOf("&") != -1) {
@@ -81,9 +82,19 @@ public class DistributionSendingMessageHandler extends AbstractMessageHandler {
 
                 for (String queueName : queueNames) {
                     if (queueName.indexOf("|||") != -1) {
-                        String dir = queueName.replaceAll("\\|\\|\\|", "");
-                        if (this.distributionProp.getUnWrap()) {
-                            playload = DistributionUtils.unWrap(sm);
+                        String[] dirInfo = queueName.split("\\|\\|\\|");
+                        //String dir = queueName.replaceAll("\\|\\|\\|", "");
+                        String dir = dirInfo[0];
+                        if (1 < dirInfo.length) {
+                            if (CommonConstant.OPERATE_UNWRAP.equals(dirInfo[1])) {
+                                playload = DistributionUtils.unWrap(sm);
+                            } else {
+                                if (3 < dirInfo.length) {
+                                    playload = DistributionUtils.wrap(sm, dirInfo[2], dirInfo[3]);
+                                } else {
+                                    playload = DistributionUtils.wrap(sm, CommonConstant.DEFAULT_SENDER_ID, CommonConstant.DEFAULT_RECEIVE_ID);
+                                }
+                            }
                         }
                         distributionMessageGateway.writeToFile(new File(dir), playload);
                         logger.info("senderId=[" + senderId + "] dxpId=[" + dxpid + "] messageType=[" + msgtype + "] write to dir=[" + dir + "] use["
@@ -93,11 +104,33 @@ public class DistributionSendingMessageHandler extends AbstractMessageHandler {
                         String[] queueNameAndIndex = queueName.split("\\|\\|");
                         queueName = queueNameAndIndex[0];
                         userRabbitmqTemplate = CommonUtils.getRabbitTelmpateByIndex(Integer.valueOf(queueNameAndIndex[1]));
+                        if (2 < queueNameAndIndex.length) {
+                            if (CommonConstant.OPERATE_UNWRAP.equals(queueNameAndIndex[2])) {
+                                sm = new String(DistributionUtils.unWrap(sm), StandardCharsets.UTF_8);
+                            } else {
+                                if (4 < queueNameAndIndex.length) {
+                                    sm = DistributionUtils.wrap(sm, queueNameAndIndex[3], queueNameAndIndex[4]);
+                                } else {
+                                    sm = DistributionUtils.wrap(sm, CommonConstant.DEFAULT_SENDER_ID, CommonConstant.DEFAULT_RECEIVE_ID);
+                                }
+                            }
+                        }
                     } else if (queueName.indexOf("|") != -1) {
                         String[] queueNameAndIndex = queueName.split("\\|");
                         queueName = queueNameAndIndex[0];
                         useJmsTemplate = CommonUtils.getJmsTemplateByIndex(Integer.valueOf(queueNameAndIndex[1]));
                         useCcsid = CommonUtils.getCcsidByIndex(Integer.valueOf(queueNameAndIndex[1]));
+                        if (2 < queueNameAndIndex.length) {
+                            if (CommonConstant.OPERATE_UNWRAP.equals(queueNameAndIndex[2])) {
+                                playload = DistributionUtils.unWrap(sm);
+                            } else {
+                                if (4 < queueNameAndIndex.length) {
+                                    playload = DistributionUtils.wrap(sm, queueNameAndIndex[3], queueNameAndIndex[4]);
+                                } else {
+                                    playload = DistributionUtils.wrap(sm, CommonConstant.DEFAULT_SENDER_ID, CommonConstant.DEFAULT_RECEIVE_ID);
+                                }
+                            }
+                        }
                     } else {
                         logger.error("无法找到对应的输出,消息无法处理!!!");
                         continue;

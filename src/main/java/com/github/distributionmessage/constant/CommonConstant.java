@@ -50,4 +50,12 @@ public interface CommonConstant {
     String RESULT_SUCCESS = "0";
 
     String RESULT_FAIL = "1";
+
+    String OPERATE_UNWRAP = "u";
+
+    String OPERATE_WRAP = "w";
+
+    String DEFAULT_SENDER_ID = "sender";
+
+    String DEFAULT_RECEIVE_ID = "receive";
 }

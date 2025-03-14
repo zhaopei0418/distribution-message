@@ -10,7 +10,7 @@ distribution:
   otherRabbitInputQueue:
   # dir|fileExtension|periodic(s)|maxMessagesPerPoll|minConcurrency|maxConcurrency|keepAliveSeconds|queueCcpacity|threadNamePrefix
   otherDirectorInput:
-    #- /home/zhaopei/Desktop/share/init/send|.xml|5000|2|4|8|3000|2000|share-send-
+    - /home/zhaopei/share/1|xml|5000|100|1|1|3000|2000|share-send-
   # 打包链配置, 发送者id|接收者id|类型(i=ibm输入通道; r=rabbitmq输入通道; d=dir输入通道;)|相对应输入通道的索引 如:  senderId|receiverId|type|index
   wrapChain:
     #- EcssEnt_tgfz|ecssentInvt|d|0
@@ -36,8 +36,8 @@ distribution:
   rabbitOtherOutputQueue:
   conditionMutualExclusion: true
   # 优先级第一 map key:dxpid, value: 队列名称 如: {DXPENT0000011951: DXP_11951_ENT},
-  # 加"|数字" 是 otherOutputQueue 中的索引, 加"||数字"是 rabbitOtherOutputQueue中的索引,rabbitOtherOutputQueue为第一个,
-  # 加|||则前面为输入目录名,直接把数据写入到相应目录
+  # 加"|数字[|解封还是封装(u:解封, w:封装，封装需要后面两个信息)|发送方id|接收方id]" 是 otherOutputQueue 中的索引, 加"||数字[同前面]"是 rabbitOtherOutputQueue中的索引,rabbitOtherOutputQueue为第一个,
+  # 加|||[u:解封,w:封装|||发送方id|||接收方id]则前面为输入目录名,直接把数据写入到相应目录
   dxpidDistribution: {}
   # 优先级第二 map key:msgtype, value: 队列名称 如: {CEB312Message: DXP_11951_ENT}
   msgtypeDistribution: {}
@@ -45,6 +45,9 @@ distribution:
   # 加"|数字" 是 otherOutputQueue 中的索引, 加"||数字"是 rabbitOtherOutputQueue中的索引,rabbitOtherOutputQueue为第一个,
   # 加|||则前面为输入目录名,直接把数据写入到相应目录
   senderIdDistribution: {}
+  # 根据具体业务关键字来分发比如:{customsCode: {4612: SEND, 4613: RECEIVE}}, 队列信息同上
+  businessDataDistribution: {}
+  #businessDataDistribution: {customsCode: {1501: '/home/zhaopei/share/2|||u'}, ebcCode: {6101960D3X: '/home/zhaopei/share/4|||w|||00501|||customs'}}
   # 优先级第四 map key: 队列名称, value: 比重 如: {GGFW_TO_ENT: 1, GGFW_TO_ENT_INVT: 1}
   percentageDistribution: {}
   # 前面四个没有，才执行最后一个 列表格式，随机分发
@@ -53,11 +56,12 @@ distribution:
   # 加"|数字" 是 otherOutputQueue 中的索引, 加"||数字"是 rabbitOtherOutputQueue中的索引,rabbitOtherOutputQueue为第一个,
   # 加|||则前面为输入目录名,直接把数据写入到相应目录
   # 逗号分隔队列，随机分配，&号分隔，全部队列发送如"YH_DEAD||0,YH_DEAD|0" 随机取其中一个来分送, "YH_DEAD||0&YH_DEAD|0" 两个队列都发送
-  defaultQueue: "YH_DEAD||0"
+  #defaultQueue: "YH_DEAD||0"
+  defaultQueue: '/home/zhaopei/share/3|||'
   #defaultQueue: "/home/zhaopei/Desktop/share/init/send1|||"
-  filePrefix: FILE_RECEIVE_
+  filePrefix: FILE_RECEIVE
   fileSuffix: .xml
-  # 存文件的时候是否解dxp封装
+  # 存文件的时候是否解dxp封装, 11.7之后版本作废
   unWrap: true
   removeSvHead: true
 

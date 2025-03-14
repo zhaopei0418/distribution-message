@@ -14,10 +14,11 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.pool2.impl.GenericObjectPool;
-import org.springframework.util.StringUtils;
+import org.springframework.util.CollectionUtils;
 import org.w3c.dom.Document;
 
 import com.alibaba.fastjson.JSON;
@@ -34,7 +35,7 @@ public class DistributionUtils {
 
     private static HttpClientProp httpClientProp;
 
-    public static String getDestinationQueueName(DistributionProp distributionProp, String dxpid, String msgtype, String senderId) {
+    public static String getDestinationQueueName(DistributionProp distributionProp, String dxpid, String msgtype, String senderId, String message) {
         String result = null;
 
         if (distributionProp.getConditionMutualExclusion()) {
@@ -47,6 +48,9 @@ public class DistributionUtils {
             } else if (null != distributionProp.getSenderIdDistribution() && !distributionProp.getSenderIdDistribution().isEmpty()) {
                 logger.debug("sender distribution");
                 result = distributionProp.getSenderIdDistribution().get(senderId);
+            } else if (!CollectionUtils.isEmpty(distributionProp.getBusinessDataDistribution())) {
+                logger.debug("business data distribution");
+                result = getBusinessQueueName(message, distributionProp.getBusinessDataDistribution());
             } else if (null != distributionProp.getPercentageDistribution() && !distributionProp.getPercentageDistribution().isEmpty()) {
                 logger.debug("percentage distribution");
                 if (distributionProp.isUpdate()) {
@@ -95,6 +99,11 @@ public class DistributionUtils {
                 result = distributionProp.getSenderIdDistribution().get(senderId);
             }
 
+            if (null == result && !CollectionUtils.isEmpty(distributionProp.getBusinessDataDistribution())) {
+                logger.debug("business data distribution");
+                result = getBusinessQueueName(message, distributionProp.getBusinessDataDistribution());
+            }
+
             if (null == result && null != distributionProp.getPercentageDistribution() && !distributionProp.getPercentageDistribution().isEmpty()) {
                 logger.debug("percentage distribution");
                 if (distributionProp.isUpdate()) {
@@ -130,7 +139,7 @@ public class DistributionUtils {
                 result = distributionProp.getRandomDistribution().get(randomIndex);
             }
         }
-        if (null == result) {
+        if (StringUtils.isBlank(result)) {
             result = distributionProp.getDefaultQueue();
         }
         return getRandomQueueName(result);
@@ -249,6 +258,40 @@ public class DistributionUtils {
         return null;
     }
 
+    public static String getDataByNodeName(String message, String nodeName) {
+        if (StringUtils.isBlank(message) || StringUtils.isBlank(nodeName)) {
+            return null;
+        }
+
+        Pattern pattern = Pattern.compile(String.format("<%s>(.+)</%s>", nodeName, nodeName));
+        Matcher matcher = pattern.matcher(message);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
+    }
+
+    public static String getBusinessQueueName(String message, Map<String, Map<String, String>> businessDataDistribution) {
+        if (StringUtils.isBlank(message) || CollectionUtils.isEmpty(businessDataDistribution)) {
+            return null;
+        }
+
+        for (Map.Entry<String, Map<String, String>> entry : businessDataDistribution.entrySet()) {
+            String businessData = getDataByNodeName(unWrapString(message), entry.getKey());
+
+            if (StringUtils.isBlank(businessData)) {
+                businessData = getDataByNodeName(message, entry.getKey());
+            }
+
+            if (StringUtils.isNotBlank(businessData) && !CollectionUtils.isEmpty(entry.getValue())
+                && entry.getValue().containsKey(businessData)) {
+                return entry.getValue().get(businessData);
+            }
+        }
+
+        return null;
+    }
+
     public static String getCreatTime(String message) {
         if (null == message) {
             return null;
@@ -289,6 +332,10 @@ public class DistributionUtils {
         return dxp.getBytes(StandardCharsets.UTF_8);
     }
 
+    public static String unWrapString(String dxp) {
+        return null == unWrap(dxp) ? null : new String(unWrap(dxp), StandardCharsets.UTF_8);
+    }
+
     public static String wrap(byte[] data, String senderId, String receiverId) {
         if (null == data || data.length == 0) {
             return null;
@@ -304,7 +351,7 @@ public class DistributionUtils {
         stringBuffer.append(String.format("            <ReceiverId>%s</ReceiverId>\n", receiverId));
         stringBuffer.append("        </ReceiverIds>\n");
         stringBuffer.append(String.format("        <CreatTime>%s</CreatTime>\n", CommonConstant.LOCAL_DATE_TIME.format(LocalDateTime.now())));
-        stringBuffer.append(String.format("        <MsgType>%s</MsgType>\n", getMessageTypeByCebMessage(new String(data, StandardCharsets.UTF_8))));
+        stringBuffer.append(String.format("        <MsgType>%s</MsgType>\n", getWrayMessageType(new String(data, StandardCharsets.UTF_8))));
         stringBuffer.append("    </TransInfo>\n");
         stringBuffer.append(String.format("    <Data>%s</Data>\n", Base64.encodeBase64String(data)));
         stringBuffer.append("</DxpMsg>");
@@ -335,7 +382,7 @@ public class DistributionUtils {
     }
 
     public static String svWrap(String data, String startNode, String endNode) {
-        if (org.apache.commons.lang3.StringUtils.isBlank(data)) {
+        if (StringUtils.isBlank(data)) {
             return null;
         }
 
@@ -409,6 +456,17 @@ public class DistributionUtils {
         return msgType;
     }
 
+    public static String getWrayMessageType(String message) {
+        String msgType = "UNKNOWN";
+
+        Document document = stringTransformDocument(message);
+        if (null != document) {
+            return document.getDocumentElement().getTagName();
+        }
+
+        return msgType;
+    }
+
     public static String signAndWrap(String url, String xml, String ieType) {
         String result = null;
 
@@ -424,7 +482,7 @@ public class DistributionUtils {
 //                logger.info(String.format("request [%s] param [%s] cost time [%d]ms.", url,
 //                        JSON.toJSONString(param), (System.currentTimeMillis() - startTime)));
                 String printInfo = null;
-                if (org.apache.commons.lang.StringUtils.isNotBlank(requestResult)) {
+                if (StringUtils.isNotBlank(requestResult)) {
                     JSONObject jsonResult =  JSON.parseObject(requestResult);
                     if (CommonConstant.RESULT_SUCCESS.equals(jsonResult.getString(CommonConstant.RESULT_CODE))) {
                         result = jsonResult.getString(CommonConstant.RESULT_DATA);
@@ -436,7 +494,7 @@ public class DistributionUtils {
                 }
                 logger.info(String.format("request [%s] param {ieType: [%s], MsgType: [%s]} result [%s] cost time [%d]ms.", url,
                         ieType, getMessageType(xml), printInfo, (System.currentTimeMillis() - startTime)));
-                if (org.apache.commons.lang.StringUtils.isNotBlank(result)) {
+                if (StringUtils.isNotBlank(result)) {
                     break;
                 } else {
                     Thread.sleep(httpClientProp.getRetryInterval());
@@ -484,7 +542,7 @@ public class DistributionUtils {
     }
 
     public static String buildSvMsgId(String startNode) {
-        if (org.apache.commons.lang3.StringUtils.isBlank(startNode)) {
+        if (StringUtils.isBlank(startNode)) {
             return null;
         }
 
