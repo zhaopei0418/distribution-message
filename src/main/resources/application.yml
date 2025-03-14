@@ -10,7 +10,7 @@ distribution:
   otherRabbitInputQueue:
   # dir|fileExtension|periodic(s)|maxMessagesPerPoll|minConcurrency|maxConcurrency|keepAliveSeconds|queueCcpacity|threadNamePrefix
   otherDirectorInput:
-    - /home/zhaopei/share/1|xml|5000|100|1|1|3000|2000|share-send-
+    #- /home/zhaopei/share/1|xml|5000|100|1|1|3000|2000|share-send-
   # 打包链配置, 发送者id|接收者id|类型(i=ibm输入通道; r=rabbitmq输入通道; d=dir输入通道;)|相对应输入通道的索引 如:  senderId|receiverId|type|index
   wrapChain:
     #- EcssEnt_tgfz|ecssentInvt|d|0
